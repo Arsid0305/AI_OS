@@ -1,0 +1,19 @@
+{
+  "name": "AI_OS_v3_Professional",
+  "version": "3.1.0",
+  "principles": [
+    "Separation of domain and skill",
+    "Explicit risk boundaries",
+    "Versioned prompts as single source of truth",
+    "Mode-aware quality evaluation",
+    "Manual controlled execution"
+  ],
+  "modes": [
+    "meta_agent",
+    "meta_prompt",
+    "marketplace",
+    "research",
+    "visual"
+  ],
+  "identity_hash": "dec3091df7e1d76fa842cfff377e873e4cad01c993b58cac28df4b98325adbda"
+}

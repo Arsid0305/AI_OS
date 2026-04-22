@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ReviewBot</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23a500ff'/><text x='32' y='44' font-size='36' text-anchor='middle' fill='white'>💬</text></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#f5f6f8;min-height:100vh}
+  input,textarea,button{font-family:inherit}
+  @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+  ::-webkit-scrollbar{width:6px}
+  ::-webkit-scrollbar-thumb{background:#d0d0d8;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const API = "http://127.0.0.1:8000";
+const LS = {
+  get:(k,fb)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}},
+  set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}},
+};
+
+const TONE_LABELS   = {formal:"Официальный",friendly:"Дружелюбный",neutral:"Нейтральный"};
+const LENGTH_LABELS = {short:"Короткий (до 200 зн.)",medium:"Средний (до 500 зн.)",long:"Развёрнутый (до 900 зн.)"};
+const MODEL_LABELS  = {"gpt-4o-mini":"GPT-4o mini — быстро, дёшево","gpt-4o":"GPT-4o — выше качество"};
+
+const THEMES = {
+  wb: {
+    grad:    "linear-gradient(135deg, #a500ff, #7b00ff)",
+    accent:  "#a500ff",
+    accentBg:"rgba(165,0,255,0.06)",
+    accentShadow:"rgba(165,0,255,0.12)",
+    name:    "WB",
+    loadLabel:"↓ Загрузить отзывы с WB",
+    apiPath: "/api/wb/reviews",
+    sendPath:"/api/wb/send",
+    platform:"wb",
+  },
+  ozon: {
+    grad:    "linear-gradient(135deg, #005BFF, #0041CC)",
+    accent:  "#005BFF",
+    accentBg:"rgba(0,91,255,0.06)",
+    accentShadow:"rgba(0,91,255,0.12)",
+    name:    "OZON",
+    loadLabel:"↓ Загрузить отзывы с Ozon",
+    apiPath: "/api/ozon/reviews",
+    sendPath:"/api/ozon/send",
+    platform:"ozon",
+  },
+};
+
+const CARD = {background:"#fff",borderRadius:14,border:"1px solid #e6e8ec",boxShadow:"0 8px 24px rgba(0,0,0,0.05)"};
+
+function extractFirstName(n){
+  if(!n?.trim())return"";
+  const f=n.trim().split(/\s+/)[0];
+  return /^[А-ЯЁA-Z][а-яёa-z]{1,14}$/.test(f)?f:"";
+}
+function hasContent(r){return!!(r.pros?.trim()||r.cons?.trim()||r.comment?.trim()||r.photos?.length||r.videoUrl)}
+async function apiFetch(path,opts={}){
+  const res=await fetch(API+path,{headers:{"Content-Type":"application/json"},...opts});
+  const data=await res.json();
+  if(!res.ok||!data.ok)throw new Error(data.error||`HTTP ${res.status}`);
+  return data;
+}
+
+// ── Иконки ──
+const IcoStar=({filled,size=22})=>(
+  <span style={{fontSize:size,color:filled?"#ffb84d":"#e6e6e6",textShadow:filled?"0 1px 4px rgba(255,184,77,0.35)":"none",lineHeight:1,display:"inline-block"}}>★</span>
+);
+const IcoSparkle=()=>(<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>);
+const IcoSettings=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>);
+const IcoBack=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>);
+const IcoCheck=()=>(<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>);
+const IcoPlus=()=>(<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>);
+const IcoTrash=()=>(<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>);
+
+const inp={width:"100%",padding:"12px 14px",border:"1.5px solid #d9dbe0",borderRadius:10,fontSize:15,color:"#1a1a1a",background:"#fafafa",transition:"all 0.15s",fontFamily:"inherit"};
+const lbl={display:"block",fontSize:13,fontWeight:600,color:"#444",marginBottom:6};
+
+function Stars({count,size=22}){return<span style={{display:"flex",gap:2}}>{[1,2,3,4,5].map(i=><IcoStar key={i} filled={i<=count} size={size}/>)}</span>;}
+function StarPicker({value,onChange,size=28}){
+  const[hover,setHover]=useState(0);
+  return<div style={{display:"flex",gap:4}}>{[1,2,3,4,5].map(n=><button key={n} type="button" onMouseEnter={()=>setHover(n)} onMouseLeave={()=>setHover(0)} onClick={()=>onChange(n)} style={{background:"none",border:"none",cursor:"pointer",padding:2,lineHeight:1}}><IcoStar filled={(hover||value)>=n} size={size}/></button>)}</div>;
+}
+
+function PlatformBadge({platform}){
+  const t=THEMES[platform]||THEMES.wb;
+  return<span style={{display:"inline-block",padding:"5px 14px",borderRadius:20,fontSize:13,fontWeight:600,color:"#fff",background:t.grad,marginBottom:8}}>{t.name}</span>;
+}
+
+function PrimBtn({onClick,disabled,children,grad}){
+  return<button onClick={onClick} disabled={disabled} style={{padding:"13px 20px",background:disabled?"#e6e8ec":grad,color:disabled?"#999":"#fff",border:"none",borderRadius:10,fontSize:15,fontWeight:600,cursor:disabled?"not-allowed":"pointer",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"center",gap:8,width:"100%"}}>{children}</button>;
+}
+
+// Переключатель платформы
+function PlatformSwitch({current,onChange}){
+  return(
+    <div style={{display:"flex",background:"rgba(255,255,255,0.15)",borderRadius:12,padding:4,gap:4}}>
+      {["wb","ozon"].map(p=>(
+        <button key={p} onClick={()=>onChange(p)}
+          style={{padding:"6px 18px",borderRadius:9,border:"none",fontSize:14,fontWeight:700,cursor:"pointer",transition:"all 0.2s",
+            background:current===p?"#fff":"transparent",
+            color:current===p?THEMES[p].accent:"rgba(255,255,255,0.75)"}}>
+          {THEMES[p].name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// НАСТРОЙКИ
+// ══════════════════════════════════════════════════════════
+function SetupScreen({initial,isEdit,onSave,onBack,theme}){
+  const t=theme||THEMES.wb;
+  const[form,setForm]=useState(initial||{brandName:"",tone:"friendly",responseLength:"medium",model:"gpt-4o-mini",signature:"",customInstructions:""});
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const valid=form.brandName.trim().length>0;
+  return(
+    <div style={{minHeight:"100vh",background:"#f5f6f8"}}>
+      <div style={{background:t.grad,padding:"0 24px",display:"flex",alignItems:"center",gap:12}}>
+        {isEdit&&<button onClick={onBack} style={{background:"none",border:"none",color:"#fff",cursor:"pointer",padding:"16px 4px",display:"flex"}}><IcoBack/></button>}
+        <span style={{color:"#fff",fontWeight:700,fontSize:16,padding:"16px 0"}}>{isEdit?"Настройки бренда":"Настройка бота"}</span>
+      </div>
+      <div style={{padding:24,maxWidth:520,margin:"0 auto"}}>
+        <div style={{...CARD,padding:28,display:"flex",flexDirection:"column",gap:20}}>
+          <div>
+            <label style={lbl}>Название бренда <span style={{color:t.accent}}>*</span></label>
+            <input style={inp} placeholder="Organic Lab" value={form.brandName} onChange={e=>set("brandName",e.target.value)}
+              onFocus={e=>{e.target.style.borderColor=t.accent;e.target.style.boxShadow=`0 0 0 3px ${t.accentBg}`;}}
+              onBlur={e=>{e.target.style.borderColor="#d9dbe0";e.target.style.boxShadow="none";}}/>
+          </div>
+          <div>
+            <label style={lbl}>Тон</label>
+            <div style={{display:"flex",gap:8}}>
+              {Object.entries(TONE_LABELS).map(([k,v])=>(
+                <button key={k} onClick={()=>set("tone",k)} style={{flex:1,padding:"9px 4px",borderRadius:10,border:`2px solid ${form.tone===k?t.accent:"#e6e8ec"}`,background:form.tone===k?t.accentBg:"#fff",color:form.tone===k?t.accent:"#333",fontSize:13,fontWeight:form.tone===k?600:400,cursor:"pointer"}}>{v}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={lbl}>Длина ответа</label>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {Object.entries(LENGTH_LABELS).map(([k,v])=>(
+                <button key={k} onClick={()=>set("responseLength",k)} style={{padding:"10px 16px",borderRadius:10,border:`2px solid ${form.responseLength===k?t.accent:"#e6e8ec"}`,background:form.responseLength===k?t.accentBg:"#fff",color:form.responseLength===k?t.accent:"#333",fontSize:14,fontWeight:form.responseLength===k?600:400,cursor:"pointer",textAlign:"left"}}>{v}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={lbl}>Модель GPT</label>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {Object.entries(MODEL_LABELS).map(([k,v])=>(
+                <button key={k} onClick={()=>set("model",k)} style={{padding:"10px 16px",borderRadius:10,border:`2px solid ${form.model===k?"#10A37F":"#e6e8ec"}`,background:form.model===k?"rgba(16,163,127,0.06)":"#fff",color:form.model===k?"#10A37F":"#333",fontSize:14,fontWeight:form.model===k?600:400,cursor:"pointer",textAlign:"left"}}>{v}</button>
+              ))}
+            </div>
+            <div style={{fontSize:12,color:"#999",marginTop:6}}>mini: ~$0.0002 за ответ · 4o: ~$0.003 за ответ</div>
+          </div>
+          <div>
+            <label style={lbl}>Подпись</label>
+            <input style={inp} placeholder={`С уважением, команда ${form.brandName||"бренда"}`} value={form.signature} onChange={e=>set("signature",e.target.value)}
+              onFocus={e=>{e.target.style.borderColor=t.accent;e.target.style.boxShadow=`0 0 0 3px ${t.accentBg}`;}}
+              onBlur={e=>{e.target.style.borderColor="#d9dbe0";e.target.style.boxShadow="none";}}/>
+          </div>
+          <div>
+            <label style={lbl}>Доп. инструкции</label>
+            <textarea style={{...inp,height:90,lineHeight:1.6,resize:"vertical"}} placeholder="Например: при браке — предлагать замену..." value={form.customInstructions} onChange={e=>set("customInstructions",e.target.value)}
+              onFocus={e=>{e.target.style.borderColor=t.accent;e.target.style.boxShadow=`0 0 0 3px ${t.accentBg}`;}}
+              onBlur={e=>{e.target.style.borderColor="#d9dbe0";e.target.style.boxShadow="none";}}/>
+          </div>
+          <PrimBtn onClick={()=>valid&&onSave(form)} disabled={!valid} grad={t.grad}>{isEdit?"Сохранить":"Начать работу →"}</PrimBtn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// МОДАЛ: Добавить вручную
+// ══════════════════════════════════════════════════════════
+function AddReviewModal({onClose,onAdd,theme}){
+  const t=theme||THEMES.wb;
+  const[form,setForm]=useState({productName:"",article:"",author:"",stars:0,pros:"",cons:"",comment:""});
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const valid=form.productName.trim()&&form.stars>0;
+  const handleAdd=()=>{
+    if(!valid)return;
+    onAdd({id:"manual_"+Date.now(),productName:form.productName.trim(),article:form.article.trim()||"—",author:form.author.trim()||"Покупатель",stars:form.stars,pros:form.pros.trim(),cons:form.cons.trim(),comment:form.comment.trim(),date:new Date().toLocaleDateString("ru-RU",{day:"numeric",month:"short",year:"numeric"}),status:"pending",source:"manual",platform:t.platform});
+    onClose();
+  };
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:640,maxHeight:"92vh",overflow:"auto",animation:"slideUp 0.25s ease"}}>
+        <div style={{padding:"18px 24px 14px",borderBottom:"1px solid #f0f0f5",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#fff"}}>
+          <div style={{fontWeight:700,fontSize:17}}>Добавить отзыв вручную</div>
+          <button onClick={onClose} style={{background:"#f0f1f4",border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:18,color:"#666",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+        </div>
+        <div style={{padding:"20px 24px 28px",display:"flex",flexDirection:"column",gap:16}}>
+          <div style={{background:"#fafafa",borderRadius:12,padding:"16px 18px",border:"1px solid #f0f0f5"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:12}}>Товар</div>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div><label style={lbl}>Название <span style={{color:t.accent}}>*</span></label><input style={inp} placeholder="Мяч для собак" value={form.productName} onChange={e=>set("productName",e.target.value)}/></div>
+              <div><label style={lbl}>Артикул</label><input style={inp} placeholder="251537413" value={form.article} onChange={e=>set("article",e.target.value)}/></div>
+            </div>
+          </div>
+          <div style={{background:"#fafafa",borderRadius:12,padding:"16px 18px",border:"1px solid #f0f0f5"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:12}}>Покупатель</div>
+            <div><label style={lbl}>Имя</label><input style={inp} placeholder="Мария К." value={form.author} onChange={e=>set("author",e.target.value)}/><div style={{fontSize:12,color:"#999",marginTop:4}}>Обращение: <strong style={{color:"#1a1a1a"}}>{extractFirstName(form.author)}</strong></div></div>
+            <div style={{marginTop:14}}>
+              <label style={lbl}>Оценка <span style={{color:t.accent}}>*</span></label>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <StarPicker value={form.stars} onChange={v=>set("stars",v)} size={30}/>
+                {form.stars>0&&<span style={{fontSize:14,color:form.stars>=4?"#34C759":form.stars===3?"#FF9500":"#FF3B30",fontWeight:600}}>{form.stars>=4?"Положительный":form.stars===3?"Нейтральный":"Отрицательный"}</span>}
+              </div>
+            </div>
+          </div>
+          <div style={{background:"#fafafa",borderRadius:12,padding:"16px 18px",border:"1px solid #f0f0f5"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:12}}>Текст отзыва</div>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div><label style={lbl}><span style={{color:"#34C759"}}>✓</span> Достоинства</label><textarea style={{...inp,height:76,lineHeight:1.6,resize:"vertical"}} placeholder="Что понравилось..." value={form.pros} onChange={e=>set("pros",e.target.value)}/></div>
+              <div><label style={lbl}><span style={{color:"#FF3B30"}}>✕</span> Недостатки</label><textarea style={{...inp,height:76,lineHeight:1.6,resize:"vertical"}} placeholder="Что не понравилось..." value={form.cons} onChange={e=>set("cons",e.target.value)}/></div>
+              <div><label style={lbl}>💬 Комментарий</label><textarea style={{...inp,height:76,lineHeight:1.6,resize:"vertical"}} placeholder="Дополнительный комментарий..." value={form.comment} onChange={e=>set("comment",e.target.value)}/></div>
+            </div>
+            {form.stars>0&&!form.pros&&!form.cons&&!form.comment&&<div style={{marginTop:10,padding:"9px 13px",background:"#FFF8E1",border:"1px solid rgba(255,184,0,0.2)",borderRadius:8,fontSize:13,color:"#7A5F00"}}>⚠️ Только оценка — ответ не потребуется</div>}
+          </div>
+          <PrimBtn onClick={handleAdd} disabled={!valid} grad={t.grad}>Добавить</PrimBtn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// СПИСОК ОТЗЫВОВ
+// ══════════════════════════════════════════════════════════
+function ReviewList({reviews,loading,platformError,onSelect,onDelete,onRefresh,onOpenSettings,feedbackCount,theme,onSwitchPlatform}){
+  const t=theme||THEMES.wb;
+  const[showAdd,setShowAdd]=useState(false);
+  const filtered=reviews.filter(r=>r.platform===t.platform||r.source==="manual");
+  const pending=filtered.filter(r=>r.status==="pending");
+  const done=filtered.filter(r=>r.status==="responded");
+
+  const ReviewCard=({r,clickable})=>{
+    const noContent=!hasContent(r);
+    const rt=THEMES[r.platform]||t;
+    return(
+      <div style={{...CARD,padding:24,marginBottom:20,cursor:clickable&&!noContent?"pointer":"default",transition:"box-shadow 0.15s,transform 0.15s"}}
+        onClick={()=>clickable&&!noContent&&onSelect(r)}
+        onMouseEnter={e=>{if(clickable&&!noContent){e.currentTarget.style.boxShadow=`0 12px 32px ${t.accentShadow}`;e.currentTarget.style.transform="translateY(-1px)";}}}
+        onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 8px 24px rgba(0,0,0,0.05)";e.currentTarget.style.transform="none";}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:2}}>
+          {r.source==="manual"
+            ?<span style={{display:"inline-block",padding:"5px 14px",borderRadius:20,fontSize:13,fontWeight:600,color:"#666",background:"#f0f1f4",marginBottom:8}}>Вручную</span>
+            :<PlatformBadge platform={r.platform||t.platform}/>}
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            {r.status==="responded"&&<span style={{background:"rgba(52,199,89,0.1)",color:"#34C759",borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:4}}><IcoCheck/>Отвечено</span>}
+            {clickable&&<button onClick={e=>{e.stopPropagation();onDelete(r.id);}} style={{background:"none",border:"none",color:"#ccc",cursor:"pointer",display:"flex",padding:2,transition:"color 0.15s"}} onMouseEnter={e=>e.currentTarget.style.color="#FF3B30"} onMouseLeave={e=>e.currentTarget.style.color="#ccc"}><IcoTrash/></button>}
+          </div>
+        </div>
+        <div style={{fontSize:14,color:"#666",marginBottom:4}}>{r.author}</div>
+        <div style={{fontWeight:600,fontSize:15,color:"#1a1a1a",marginBottom:4}}>{r.productName}</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:"6px 14px",marginBottom:12,fontSize:13,color:"#888"}}>
+          {r.supplierArticle&&r.supplierArticle!=="—"&&<span>🏷 <b style={{color:"#555"}}>{r.supplierArticle}</b></span>}
+          {r.article&&r.article!=="—"&&<span>📦 {r.article}</span>}
+          {r.color&&<span>🎨 {r.color}</span>}
+          {r.date&&<span>📝 {r.date}</span>}
+          {r.orderDate&&<span>🛒 Покупка: {r.orderDate}</span>}
+        </div>
+        <div style={{marginBottom:14}}><Stars count={r.stars} size={24}/></div>
+        {r.pros&&<div style={{background:"#f9fafc",padding:"10px 14px",borderRadius:8,fontSize:14,marginBottom:8,lineHeight:1.55}}><span style={{fontWeight:600,color:"#34C759",fontSize:12}}>Достоинства: </span>{r.pros}</div>}
+        {r.cons&&<div style={{background:"#f9fafc",padding:"10px 14px",borderRadius:8,fontSize:14,marginBottom:8,lineHeight:1.55}}><span style={{fontWeight:600,color:"#FF3B30",fontSize:12}}>Недостатки: </span>{r.cons}</div>}
+        {r.comment&&<div style={{background:"#f9fafc",padding:"10px 14px",borderRadius:8,fontSize:14,lineHeight:1.55}}><span style={{fontWeight:600,color:"#888",fontSize:12}}>Комментарий: </span>{r.comment}</div>}
+        {noContent&&<div style={{fontSize:13,color:"#bbb",fontStyle:"italic"}}>Только оценка — ответ не требуется</div>}
+        {r.photos&&r.photos.length>0&&(
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:12}}>
+            {r.photos.map((url,i)=>(
+              <a key={i} href={url} target="_blank" rel="noreferrer">
+                <img src={url} style={{width:72,height:72,objectFit:"cover",borderRadius:8,border:"1px solid #e6e8ec",cursor:"pointer"}} onError={e=>e.target.style.display="none"}/>
+              </a>
+            ))}
+          </div>
+        )}
+        {r.videoUrl&&<div style={{marginTop:8}}><a href={r.videoUrl} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:13,color:"#555",background:"#f0f1f4",padding:"6px 12px",borderRadius:8,textDecoration:"none"}}>🎬 Видео покупателя</a></div>}
+      </div>
+    );
+  };
+
+  return(
+    <div style={{minHeight:"100vh",background:"#f5f6f8"}}>
+      <div style={{background:t.grad,padding:"0 24px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 0"}}>
+          <span style={{fontSize:22}}>💬</span>
+          <span style={{color:"#fff",fontWeight:700,fontSize:17}}>ReviewBot</span>
+          {feedbackCount>0&&<span style={{background:"rgba(255,255,255,0.2)",color:"#fff",borderRadius:20,padding:"3px 12px",fontSize:12}}>🎓 {feedbackCount}</span>}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 0"}}>
+          <PlatformSwitch current={t.platform} onChange={onSwitchPlatform}/>
+          <button onClick={onOpenSettings} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"8px 10px",color:"#fff",cursor:"pointer",display:"flex"}}><IcoSettings/></button>
+        </div>
+      </div>
+
+      <div style={{maxWidth:700,margin:"0 auto",padding:"28px 20px"}}>
+        <div style={{display:"flex",gap:12,marginBottom:24}}>
+          <button onClick={onRefresh} disabled={loading}
+            style={{flex:2,padding:"12px 20px",background:loading?"#e6e8ec":t.grad,color:loading?"#999":"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:600,cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all 0.15s"}}>
+            {loading?<><span style={{display:"inline-block",animation:"spin 1s linear infinite"}}>⟳</span>Загружаю...</>:<>{t.loadLabel}</>}
+          </button>
+          <button onClick={()=>setShowAdd(true)}
+            style={{flex:1,padding:"12px 16px",background:"#fff",border:`2px dashed ${t.accent}`,borderRadius:10,color:t.accent,fontSize:14,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}
+            onMouseEnter={e=>e.currentTarget.style.background=t.accentBg}
+            onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+            <IcoPlus/>Вручную
+          </button>
+        </div>
+
+        {platformError&&<div style={{padding:"12px 16px",background:"#FFF0F0",border:"1px solid #FFD0D0",borderRadius:10,fontSize:14,color:"#c0392b",marginBottom:20}}>⚠️ {platformError}</div>}
+
+        {pending.length>0&&(
+          <div>
+            <div style={{fontSize:12,fontWeight:700,color:"#999",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:14}}>
+              Ожидают ответа · {pending.filter(r=>hasContent(r)).length} / {pending.length}
+            </div>
+            {pending.map(r=><ReviewCard key={r.id} r={r} clickable={true}/>)}
+          </div>
+        )}
+
+        {done.length>0&&(
+          <div style={{marginTop:8}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#999",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:14}}>Отвечено · {done.length}</div>
+            {done.map(r=><ReviewCard key={r.id} r={r} clickable={false}/>)}
+          </div>
+        )}
+
+        {pending.length===0&&done.length===0&&!loading&&(
+          <div style={{textAlign:"center",padding:"60px 20px",color:"#999"}}>
+            <div style={{fontSize:44,marginBottom:14}}>📭</div>
+            <div style={{fontSize:16,fontWeight:600,marginBottom:6}}>Отзывов пока нет</div>
+            <div style={{fontSize:14}}>Нажми «{t.loadLabel.replace("↓ ","")}» или добавь вручную</div>
+          </div>
+        )}
+      </div>
+      {showAdd&&<AddReviewModal onClose={()=>setShowAdd(false)} onAdd={r=>{onSelect._addReview(r);setShowAdd(false);}} theme={t}/>}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// ЭКРАН ОТВЕТА
+// ══════════════════════════════════════════════════════════
+function RespondScreen({review,settings,onBack,onSubmit,theme}){
+  const t=theme||THEMES[review.platform]||THEMES.wb;
+  const[response,setResponse]=useState("");
+  const[generating,setGenerating]=useState(false);
+  const[generated,setGenerated]=useState(false);
+  const[sending,setSending]=useState(false);
+  const[error,setError]=useState(null);
+  const[rating,setRating]=useState(0);
+  const[hoverRating,setHoverRating]=useState(0);
+  const[ratingNote,setRatingNote]=useState("");
+  const[showRating,setShowRating]=useState(false);
+  const[submitted,setSubmitted]=useState(false);
+  const taRef=useRef(null);
+  const MAX=1000;
+  const firstName=extractFirstName(review.author);
+  const charColor=response.length>900?"#FF3B30":response.length>700?"#FF9500":"#999";
+
+  const handleGenerate=async()=>{
+    setGenerating(true);setError(null);setShowRating(false);setRating(0);setRatingNote("");
+    try{
+      const data=await apiFetch("/api/generate",{method:"POST",body:JSON.stringify({review,settings})});
+      setResponse(data.text);setGenerated(true);setShowRating(true);
+      setTimeout(()=>taRef.current?.focus(),100);
+    }catch(e){setError(e.message);}
+    setGenerating(false);
+  };
+
+  const handleSubmit=async()=>{
+    if(!response.trim())return;
+    setSending(true);setError(null);
+    try{
+      const rp=review.platform||"wb";
+      const sendPath=THEMES[rp]?.sendPath||"/api/wb/send";
+      if(review.source!=="manual"&&review.id){
+        await apiFetch(sendPath,{method:"POST",body:JSON.stringify({feedback_id:review.id,text:response.trim()})});
+      }
+      if(rating)await apiFetch("/api/feedback",{method:"POST",body:JSON.stringify({reviewText:[review.pros,review.cons,review.comment].filter(Boolean).join(" "),response:response.trim(),stars:review.stars,rating,note:ratingNote.trim()||null})});
+      onSubmit({reviewId:review.id,response:response.trim()});
+      setSubmitted(true);
+    }catch(e){setError(e.message);}
+    setSending(false);
+  };
+
+  if(submitted)return(
+    <div style={{minHeight:"100vh",background:"#f5f6f8",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{textAlign:"center",padding:48}}>
+        <div style={{fontSize:60,marginBottom:20}}>✅</div>
+        <div style={{fontSize:20,fontWeight:700,color:"#1a1a1a",marginBottom:10}}>{review.source!=="manual"?"Ответ отправлен!":"Ответ сохранён!"}</div>
+        {rating>0&&<div style={{fontSize:14,color:"#888",marginBottom:28}}>Оценка {rating}★ добавлена в базу обучения</div>}
+        <button onClick={onBack} style={{padding:"12px 32px",background:t.grad,color:"#fff",border:"none",borderRadius:10,fontSize:15,fontWeight:600,cursor:"pointer"}}>← К списку отзывов</button>
+      </div>
+    </div>
+  );
+
+  return(
+    <div style={{minHeight:"100vh",background:"#f5f6f8"}}>
+      <div style={{background:t.grad,padding:"0 24px",display:"flex",alignItems:"center",gap:12}}>
+        <button onClick={onBack} style={{background:"none",border:"none",color:"#fff",cursor:"pointer",padding:"16px 4px",display:"flex"}}><IcoBack/></button>
+        <span style={{color:"#fff",fontWeight:700,fontSize:16}}>Ответ на отзыв</span>
+        <span style={{background:"rgba(255,255,255,0.2)",color:"#fff",borderRadius:20,padding:"3px 12px",fontSize:12,marginLeft:"auto"}}>{t.name} API</span>
+      </div>
+
+      <div style={{maxWidth:700,margin:"0 auto",padding:"28px 20px",display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{...CARD,padding:24}}>
+          <PlatformBadge platform={review.platform||t.platform}/>
+          <div style={{fontSize:14,color:"#666",marginBottom:4}}>{review.author}</div>
+          <div style={{fontWeight:700,fontSize:16,color:"#1a1a1a",marginBottom:4}}>{review.productName}</div>
+          {review.article&&review.article!=="—"&&<div style={{fontSize:13,color:"#888",marginBottom:12}}>Арт: {review.article}</div>}
+          <div style={{marginBottom:16}}><Stars count={review.stars} size={26}/></div>
+          {review.pros&&<div style={{background:"#f9fafc",padding:"12px 16px",borderRadius:10,fontSize:15,marginBottom:10,lineHeight:1.6}}><div style={{fontSize:12,fontWeight:700,color:"#34C759",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.05em"}}>Достоинства</div>{review.pros}</div>}
+          {review.cons&&<div style={{background:"#f9fafc",padding:"12px 16px",borderRadius:10,fontSize:15,marginBottom:10,lineHeight:1.6}}><div style={{fontSize:12,fontWeight:700,color:"#FF3B30",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.05em"}}>Недостатки</div>{review.cons}</div>}
+          {review.comment&&<div style={{background:"#f9fafc",padding:"12px 16px",borderRadius:10,fontSize:15,lineHeight:1.6}}><div style={{fontSize:12,fontWeight:700,color:"#888",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.05em"}}>Комментарий</div>{review.comment}</div>}
+        </div>
+
+        <div style={{...CARD,overflow:"hidden"}}>
+          <div style={{padding:"16px 24px",borderBottom:"1px solid #f0f0f5",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div>
+              <div style={{fontWeight:700,fontSize:15,color:"#1a1a1a"}}>Ответ продавца</div>
+              <div style={{fontSize:13,color:"#888",marginTop:2}}>{firstName ? <>Обращение: <strong style={{color:t.accent}}>{firstName}</strong></> : <span style={{color:"#bbb"}}>Имя неизвестно — без обращения</span>}</div>
+            </div>
+            <button onClick={handleGenerate} disabled={generating}
+              style={{display:"flex",alignItems:"center",gap:7,padding:"9px 18px",background:generating?"#f0f1f4":"#10A37F",color:generating?"#999":"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:600,cursor:generating?"not-allowed":"pointer",transition:"all 0.15s"}}>
+              {generating?<><span style={{display:"inline-block",animation:"spin 1s linear infinite"}}>⟳</span>Генерирую...</>:<><IcoSparkle/>{generated?"Перегенерировать":"Сгенерировать ИИ"}</>}
+            </button>
+          </div>
+          <div style={{padding:"0 24px"}}>
+            <textarea ref={taRef} value={response} onChange={e=>e.target.value.length<=MAX&&setResponse(e.target.value)}
+              placeholder="Напишите ответ вручную или нажмите «Сгенерировать ИИ»..."
+              style={{width:"100%",minHeight:150,border:"none",outline:"none",resize:"none",fontSize:15,color:"#1a1a1a",lineHeight:1.6,padding:"16px 0",background:"transparent",fontFamily:"inherit"}}/>
+          </div>
+          <div style={{padding:"0 24px 16px",display:"flex",justifyContent:"space-between"}}>
+            <span style={{fontSize:13,color:"#bbb"}}>Лимит: 1000 символов</span>
+            <span style={{fontSize:13,color:charColor,fontVariantNumeric:"tabular-nums",fontWeight:response.length>900?600:400}}>{response.length} / {MAX}</span>
+          </div>
+          {error&&<div style={{margin:"0 24px 16px",padding:"11px 16px",background:"#FFF0F0",border:"1px solid #FFD0D0",borderRadius:8,fontSize:14,color:"#c0392b"}}>{error}</div>}
+        </div>
+
+        {showRating&&(
+          <div style={{...CARD,padding:24,animation:"fadeIn 0.3s ease"}}>
+            <div style={{fontSize:15,fontWeight:600,color:"#1a1a1a",marginBottom:14}}>🎓 Оцените ответ — бот учится на ваших оценках</div>
+            <div style={{display:"flex",gap:8,marginBottom:12}}>
+              {[1,2,3,4,5].map(n=>(
+                <button key={n} onMouseEnter={()=>setHoverRating(n)} onMouseLeave={()=>setHoverRating(0)} onClick={()=>setRating(n)}
+                  style={{width:44,height:44,borderRadius:10,border:`2px solid ${(hoverRating||rating)>=n?"#ffb84d":"#e6e8ec"}`,background:(hoverRating||rating)>=n?"#FFF8E1":"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.1s"}}>
+                  <IcoStar filled={(hoverRating||rating)>=n} size={22}/>
+                </button>
+              ))}
+              {rating>0&&<span style={{alignSelf:"center",fontSize:14,color:"#888",marginLeft:8}}>{rating<=2?"Плохо":rating===3?"Нормально":rating===4?"Хорошо":"Отлично!"}</span>}
+            </div>
+            {rating>0&&rating<=3&&<input style={inp} placeholder="Что не так? (помогает боту улучшиться)" value={ratingNote} onChange={e=>setRatingNote(e.target.value)}/>}
+          </div>
+        )}
+
+        <PrimBtn onClick={handleSubmit} disabled={!response.trim()||response.length>MAX||sending} grad={t.grad}>
+          {sending?<><span style={{display:"inline-block",animation:"spin 1s linear infinite"}}>⟳</span>Отправляю...</>:<><IcoCheck/>{review.source!=="manual"?`Отправить на ${t.name}`:"Сохранить ответ"}</>}
+        </PrimBtn>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// ROOT
+// ══════════════════════════════════════════════════════════
+function App(){
+  const[screen,setScreen]=useState("loading");
+  const[settings,setSettings]=useState(null);
+  const[reviews,setReviews]=useState([]);
+  const[activeReview,setActive]=useState(null);
+  const[editSettings,setEditSettings]=useState(false);
+  const[loading,setLoading]=useState(false);
+  const[platformError,setPlatformError]=useState(null);
+  const[feedbackCount,setFeedbackCount]=useState(0);
+  const[platformKey,setPlatformKey]=useState(()=>LS.get("active_platform","wb"));
+
+  const theme=THEMES[platformKey]||THEMES.wb;
+
+  useEffect(()=>{
+    const s=LS.get("wb_settings",null);
+    const r=LS.get("wb_reviews_local",[]);
+    setReviews(r);
+    if(!s){setScreen("setup");return;}
+    setSettings(s);setScreen("list");
+    fetch(API+"/api/feedback/stats").then(r=>r.json()).then(d=>{if(d.total)setFeedbackCount(d.total);}).catch(()=>{});
+  },[]);
+
+  const handleSaveSettings=(s)=>{setSettings(s);LS.set("wb_settings",s);setEditSettings(false);setScreen("list");};
+
+  const handleSwitchPlatform=(p)=>{
+    setPlatformKey(p);
+    LS.set("active_platform",p);
+    setPlatformError(null);
+  };
+
+  const handleRefresh=async()=>{
+    setLoading(true);setPlatformError(null);
+    try{
+      const data=await apiFetch(theme.apiPath);
+      const existingIds=new Set(reviews.map(r=>r.id));
+      const newOnes=data.reviews.filter(r=>!existingIds.has(r.id));
+      const merged=[...newOnes.map(r=>({...r,source:theme.platform,platform:theme.platform})),...reviews];
+      setReviews(merged);LS.set("wb_reviews_local",merged);
+      if(data.count===0)setPlatformError(`Новых неотвеченных отзывов нет`);
+    }catch(e){setPlatformError(e.message);}
+    setLoading(false);
+  };
+
+  const handleAddReview=(r)=>{const u=[r,...reviews];setReviews(u);LS.set("wb_reviews_local",u);};
+  const handleDeleteReview=(id)=>{const u=reviews.filter(r=>r.id!==id);setReviews(u);LS.set("wb_reviews_local",u);};
+  const handleSubmit=({reviewId,response})=>{
+    const u=reviews.map(r=>r.id===reviewId?{...r,status:"responded",sentResponse:response}:r);
+    setReviews(u);LS.set("wb_reviews_local",u);setActive(null);
+    fetch(API+"/api/feedback/stats").then(r=>r.json()).then(d=>{if(d.total)setFeedbackCount(d.total);}).catch(()=>{});
+  };
+
+  const onSelect=Object.assign((r)=>{if(hasContent(r))setActive(r);},{_addReview:handleAddReview});
+
+  if(screen==="loading")return(
+    <div style={{minHeight:"100vh",background:"#f5f6f8",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{textAlign:"center"}}>
+        <div style={{width:56,height:56,borderRadius:16,background:theme.grad,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px",fontSize:28}}>💬</div>
+        <div style={{color:"#999",fontSize:14,animation:"pulse 1.5s ease infinite"}}>Загрузка...</div>
+      </div>
+    </div>
+  );
+  if(screen==="setup"||editSettings)return<SetupScreen initial={editSettings?settings:null} isEdit={editSettings} onSave={handleSaveSettings} onBack={()=>setEditSettings(false)} theme={theme}/>;
+  if(activeReview)return<RespondScreen review={activeReview} settings={settings} onBack={()=>setActive(null)} onSubmit={handleSubmit} theme={THEMES[activeReview.platform]||theme}/>;
+  return<ReviewList reviews={reviews} loading={loading} platformError={platformError} onSelect={onSelect} onDelete={handleDeleteReview} onRefresh={handleRefresh} onOpenSettings={()=>setEditSettings(true)} feedbackCount={feedbackCount} theme={theme} onSwitchPlatform={handleSwitchPlatform}/>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Ответы на отзывы</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+<style>
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #f5f6f8;
+    margin: 0;
+}
+
+.wrapper {
+    max-width: 900px;
+    margin: 50px auto;
+}
+
+.tabs {
+    display: flex;
+    margin-bottom: 25px;
+}
+
+.tab {
+    padding: 10px 22px;
+    border-radius: 20px;
+    margin-right: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    color: white;
+    opacity: 0.6;
+}
+
+.tab.active { opacity: 1; }
+.tab-wb   { background: linear-gradient(135deg, #a500ff, #7b00ff); }
+.tab-ozon { background: linear-gradient(135deg, #0066ff, #0051cc); }
+
+.review-card {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 28px;
+    border: 1px solid #e6e8ec;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+}
+
+.platform-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 6px;
+}
+
+.wb   { background: linear-gradient(135deg, #a500ff, #7b00ff); }
+.ozon { background: linear-gradient(135deg, #0066ff, #0051cc); }
+
+.customer { font-size: 14px; color: #555; margin-bottom: 8px; }
+.product  { font-weight: 600; margin-bottom: 4px; }
+.sku-block { font-size: 13px; color: #666; margin-bottom: 12px; }
+
+.stars { font-size: 26px; margin-bottom: 14px; }
+.star-filled { display: inline-block; margin-right: 2px; color: #ffb84d; text-shadow: 0 1px 4px rgba(255,184,77,0.35); }
+.star-empty  { display: inline-block; margin-right: 2px; color: #e6e6e6; }
+
+.review-text {
+    background: #f9fafc;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 15px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+textarea {
+    width: 100%;
+    border: 1px solid #d9dbe0;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 15px;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 120px;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.buttons { margin-top: 14px; }
+
+button {
+    padding: 9px 20px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    margin-right: 10px;
+    transition: all 0.2s ease;
+}
+
+.send-btn   { background: #4a89f3; color: white; }
+.regen-btn  { background: #f0f1f4; color: #333; }
+.reject-btn { background: #ffe0e0; color: #c0392b; }
+
+.empty { color: #999; }
+</style>
+</head>
+
+<body>
+<div class="wrapper">
+
+<!-- Вкладки -->
+<div class="tabs">
+    <a href="/?platform=wb"
+       class="tab tab-wb {% if active_platform == 'wb' %}active{% endif %}">
+        WB
+    </a>
+    <a href="/?platform=ozon"
+       class="tab tab-ozon {% if active_platform == 'ozon' %}active{% endif %}">
+        OZON
+    </a>
+</div>
+
+{% if queue|length == 0 %}
+<p class="empty">Нет отзывов в очереди.</p>
+{% endif %}
+
+{% for item in queue %}
+<div class="review-card">
+
+    <div class="platform-badge {{ item.review.platform }}">
+        {{ item.review.platform | upper }}
+    </div>
+
+    <div class="customer">{{ item.review.author }}</div>
+
+    <div class="product">{{ item.review.productName }}</div>
+
+    <div class="sku-block">
+        Артикул: {{ item.review.article }} | Дата: {{ item.review.date }}
+    </div>
+
+    {% set stars = item.review.stars | int %}
+    <div class="stars">
+        {% for i in range(stars) %}
+            <span class="star-filled">★</span>
+        {% endfor %}
+        {% for i in range(5 - stars) %}
+            <span class="star-empty">★</span>
+        {% endfor %}
+    </div>
+
+    <div class="review-text">
+        {% if item.review.pros %}<b>Достоинства:</b> {{ item.review.pros }}<br>{% endif %}
+        {% if item.review.cons %}<b>Недостатки:</b> {{ item.review.cons }}<br>{% endif %}
+        {% if item.review.comment %}<b>Комментарий:</b> {{ item.review.comment }}{% endif %}
+    </div>
+
+    <!-- Одобрить -->
+    <form method="post" action="/approve">
+        <input type="hidden" name="index" value="{{ loop.index0 }}">
+        <textarea name="edited_response">{{ item.response }}</textarea>
+        <div class="buttons">
+            <button class="send-btn" type="submit">✓ Отправить</button>
+        </div>
+    </form>
+
+    <!-- Перегенерировать -->
+    <form method="post" action="/regenerate" style="display:inline">
+        <input type="hidden" name="index" value="{{ loop.index0 }}">
+        <button class="regen-btn" type="submit">↻ Перегенерировать</button>
+    </form>
+
+    <!-- Отклонить -->
+    <form method="post" action="/reject" style="display:inline">
+        <input type="hidden" name="index" value="{{ loop.index0 }}">
+        <button class="reject-btn" type="submit">✕ Удалить</button>
+    </form>
+
+</div>
+{% endfor %}
+
+</div>
+</body>
+</html>

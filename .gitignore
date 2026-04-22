@@ -1,0 +1,22 @@
+# Секретные ключи — никогда не коммитить
+runtime/.env
+*.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Виртуальное окружение
+runtime/venv/
+
+# Рабочие файлы бота (данные, очереди, логи)
+projects/WB_BOT/queue.json
+projects/WB_BOT/approved_log.json
+projects/WB_BOT/wb_feedback_history.json
+runtime/state.json
+runtime/logs/
+
+# Кэш
+.DS_Store
+Thumbs.db
