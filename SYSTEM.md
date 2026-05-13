@@ -4,6 +4,17 @@
 > Адаптеры (Claude, Cursor, ChatGPT, Gemini, Codex) переопределяют только tool-specific поведение.  
 > Не изменять без явного решения пользователя.
 
+### Как система подключается к каждому инструменту
+
+| Инструмент | Автоматически | Вручную |
+|---|---|---|
+| Claude Code | `CLAUDE.md` + читает `SYSTEM.md` | — |
+| Cursor | `.cursor/rules/ai-os.mdc` | `SYSTEM.md` в Settings |
+| ChatGPT | ❌ | `SYSTEM.md` в Project Instructions |
+| Gemini | ❌ | `SYSTEM.md` в System Instructions |
+| Codex | читает весь репо | `SYSTEM.md` в Custom Instructions или в задаче |
+| `python main.py` | prompts + skills | `--model`, `--mode`, `--goal` |
+
 ---
 
 ## 1. ГЛАВНОЕ ПРАВИЛО
