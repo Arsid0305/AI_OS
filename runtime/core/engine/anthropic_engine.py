@@ -23,12 +23,13 @@ class AnthropicEngine(BaseEngine):
         except ImportError:
             raise RuntimeError("anthropic SDK not installed. Run: pip install anthropic")
 
-    def call(self, messages: list[dict], temperature: float = 0.2) -> dict | None:
+    def call(self, messages: list[dict], temperature: float = 0.2, model: str = None) -> dict | None:
         import anthropic
 
+        _model = model or MODEL
         start = time.time()
         try:
-            print(">>> [Anthropic] CALL START")
+            print(f">>> [Anthropic] CALL START model={_model}")
 
             system_content = ""
             chat_messages = []
@@ -42,7 +43,7 @@ class AnthropicEngine(BaseEngine):
                 raise ValueError("No user/assistant messages — Anthropic requires at least one")
 
             kwargs = {
-                "model": MODEL,
+                "model": _model,
                 "max_tokens": 4000,
                 "temperature": temperature,
                 "messages": chat_messages,
@@ -59,7 +60,7 @@ class AnthropicEngine(BaseEngine):
             print(f">>> [Anthropic] DONE: {latency}s")
             return {
                 "content": content,
-                "model": MODEL,
+                "model": _model,
                 "latency": latency,
                 "tokens_prompt": usage.input_tokens if usage else 0,
                 "tokens_completion": usage.output_tokens if usage else 0,
