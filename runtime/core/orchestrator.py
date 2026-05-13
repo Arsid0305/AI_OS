@@ -19,10 +19,13 @@ _CLAUDE_TIER_MAP = {
 }
 
 SKILL_FILE_MAP = {
-    "analyzer":  "SKILL-01_ANALYZER.md",
-    "validator": "SKILL-02_VALIDATOR.md",
-    "planner":   "SKILL-03_PLANNER.md",
-    "operator":  "SKILL-04_OPERATOR.md",
+    "analyzer":   "SKILL-01_ANALYZER.md",
+    "validator":  "SKILL-02_VALIDATOR.md",
+    "planner":    "SKILL-03_PLANNER.md",
+    "operator":   "SKILL-04_OPERATOR.md",
+    "writer":     "SKILL-05_WRITER.md",
+    "researcher": "SKILL-06_RESEARCHER.md",
+    "critic":     "SKILL-07_CRITIC.md",
 }
 
 BOOTSTRAP_FILE = "SKILL-00_BOOTSTRAP.md"
@@ -84,7 +87,11 @@ class Orchestrator:
         skill = agent_type if agent_type else agent["skill"]
         risk  = risk_level  if risk_level  else agent["risk"]
 
-        authorize(skill, risk)
+        try:
+            authorize(skill, risk)
+        except Exception as e:
+            print(f"⛔ CONFLICT PROTOCOL: {e}")
+            return {"content": "", "eval_score": 0.0}
 
         prompt_data = self.registry.load_prompt(mode)
         system_prompt = prompt_data["system"]
