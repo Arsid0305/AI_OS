@@ -12,6 +12,12 @@ from core.memory_writer import append_bug
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 _SKILLS_DIR = os.path.join(_BASE_DIR, "skills_sistem", "agents")
 
+_CLAUDE_TIER_MAP = {
+    "haiku":  "claude-haiku-4-5-20251001",
+    "sonnet": "claude-sonnet-4-6",
+    "opus":   "claude-opus-4-7",
+}
+
 SKILL_FILE_MAP = {
     "analyzer":  "SKILL-01_ANALYZER.md",
     "validator": "SKILL-02_VALIDATOR.md",
@@ -83,6 +89,10 @@ class Orchestrator:
         prompt_data = self.registry.load_prompt(mode)
         system_prompt = prompt_data["system"]
 
+        # === ADAPTIVE MODEL (Anthropic only) ===
+        claude_tier = prompt_data.get("claude_tier", "sonnet")
+        resolved_claude_model = _CLAUDE_TIER_MAP.get(claude_tier, "claude-sonnet-4-6")
+
         # === SKILL INJECTION ===
         skill_rules, active_skill = _load_skill(skill)
         if skill_rules:
@@ -111,7 +121,11 @@ class Orchestrator:
 
         # === ENGINE CALL ===
         engine = get_engine(model)
-        result = engine.call(messages, temperature=temperature)
+        if model == "anthropic":
+            print(f">>> [Anthropic] tier={claude_tier} → {resolved_claude_model}")
+            result = engine.call(messages, temperature=temperature, model=resolved_claude_model)
+        else:
+            result = engine.call(messages, temperature=temperature)
 
         if not result or "content" not in result:
             print("⛔ MODEL FAILED → returning empty safe output")
@@ -146,6 +160,7 @@ class Orchestrator:
         log = {
             "mode":        mode,
             "model":       model,
+            "claude_tier": claude_tier if model == "anthropic" else None,
             "skill":       active_skill,
             "risk":        risk,
             "eval_score":  eval_score,
