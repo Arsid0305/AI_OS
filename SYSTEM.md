@@ -6,14 +6,14 @@
 
 ### Как система подключается к каждому инструменту
 
-| Инструмент | Автоматически | Вручную |
+| Инструмент | Читает SYSTEM.md | Как |
 |---|---|---|
-| Claude Code | `CLAUDE.md` + читает `SYSTEM.md` | — |
-| Cursor | `.cursor/rules/ai-os.mdc` | `SYSTEM.md` в Settings |
-| ChatGPT | ❌ | `SYSTEM.md` в Project Instructions |
-| Gemini | ❌ | `SYSTEM.md` в System Instructions |
-| Codex | читает весь репо | `SYSTEM.md` в Custom Instructions или в задаче |
-| `python main.py` | prompts + skills | `--model`, `--mode`, `--goal` |
+| Claude Code | ✅ автоматически | `CLAUDE.md` командует «читай SYSTEM.md» |
+| Cursor | ✅ автоматически | `.cursor/rules/ai-os.mdc` то же самое |
+| Codex | ✅ автоматически | читает весь репо целиком |
+| Claude Web (чаты) | ❌ сам не читает | вставить вручную в Project Instructions |
+| ChatGPT | ❌ сам не читает | вставить вручную в Project Instructions |
+| Gemini | ❌ сам не читает | вставить вручную в System Instructions |
 
 ---
 
