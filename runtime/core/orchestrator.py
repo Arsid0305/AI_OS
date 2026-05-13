@@ -6,6 +6,8 @@ from core.conflict_protocol import authorize
 from core.engine.router import get_engine
 from core.eval import evaluate
 from core.drift import detect_drift
+from core.state import save_session
+from core.memory_writer import append_bug
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 _SKILLS_DIR = os.path.join(_BASE_DIR, "skills_sistem", "agents")
@@ -73,7 +75,6 @@ class Orchestrator:
         if not agent:
             raise ValueError(f"Unknown mode: {mode}")
 
-        # Allow CLI overrides for meta_agent mode
         skill = agent_type if agent_type else agent["skill"]
         risk  = risk_level  if risk_level  else agent["risk"]
 
@@ -127,12 +128,20 @@ class Orchestrator:
         eval_score, _ = evaluate(content, mode)
 
         # === CONTENT DRIFT ===
-        if active_skill in ("analyzer", "bootstrap"):
-            drift_details = {"score": 0.0}
-        else:
+        drift_details = {"score": 0.0}
+        if active_skill not in ("analyzer", "bootstrap"):
             drifted, drift_details = detect_drift(goal, content)
             if drifted:
                 print(f"⚠️ CONTENT DRIFT: score={drift_details.get('score')}")
+                if drift_details.get("score", 0) > 0.7:
+                    append_bug(
+                        title=f"Content drift: {mode}/{active_skill}",
+                        problem=f"Score {drift_details['score']:.2f} — goal: {goal[:80]}",
+                        file_path="runtime/core/orchestrator.py",
+                    )
+
+        # === PERSIST SESSION ===
+        save_session(mode, model, active_skill, eval_score)
 
         log = {
             "mode":        mode,
