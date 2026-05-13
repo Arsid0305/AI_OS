@@ -1,7 +1,7 @@
 # SYSTEM.md — AI OS Core
 
 > Универсальное ядро. Читается любым AI перед началом работы.  
-> Адаптеры (Claude, Cursor, ChatGPT) переопределяют только tool-specific поведение.  
+> Адаптеры (Claude, Cursor, ChatGPT, Gemini, Codex) переопределяют только tool-specific поведение.  
 > Не изменять без явного решения пользователя.
 
 ---
