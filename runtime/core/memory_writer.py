@@ -40,6 +40,25 @@ def append_bug(title: str, problem: str, file_path: str = "") -> None:
     _append(path, entry)
 
 
+def close_bug(title: str) -> bool:
+    """Mark a bug as closed by title. Returns True if found and updated."""
+    path = _MEMORY_ROOT / "tasks" / "bugs.md"
+    if not path.exists():
+        return False
+    content = path.read_text(encoding="utf-8")
+    if title not in content:
+        return False
+    updated = content.replace(
+        f"**Статус:** open",
+        f"**Статус:** closed",
+        1,
+    )
+    if updated != content:
+        path.write_text(updated, encoding="utf-8")
+        return True
+    return False
+
+
 def append_lesson(title: str, what_happened: str, rule: str) -> None:
     """Append to MEMORY/lessons/lessons.md."""
     path = _MEMORY_ROOT / "lessons" / "lessons.md"
