@@ -3,7 +3,7 @@
 Установка: pip install anthropic
 Переменные окружения:
   ANTHROPIC_API_KEY — ключ API
-  ANTHROPIC_MODEL   — например claude-sonnet-4-20250514 (по умолчанию)
+  ANTHROPIC_MODEL   — например claude-sonnet-4-6 (по умолчанию)
 """
 
 import os
@@ -11,7 +11,7 @@ import time
 
 from core.engine.base_engine import BaseEngine
 
-MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
+MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 
 
 class AnthropicEngine(BaseEngine):
@@ -24,17 +24,12 @@ class AnthropicEngine(BaseEngine):
             raise RuntimeError("anthropic SDK not installed. Run: pip install anthropic")
 
     def call(self, messages: list[dict], temperature: float = 0.2) -> dict | None:
-        """
-        Anthropic API разделяет system и user/assistant сообщения.
-        Мы берём первый system-message отдельно, остальные — в messages.
-        """
         import anthropic
 
         start = time.time()
         try:
             print(">>> [Anthropic] CALL START")
 
-            # Извлечь system prompt (если есть)
             system_content = ""
             chat_messages = []
             for msg in messages:
@@ -43,7 +38,6 @@ class AnthropicEngine(BaseEngine):
                 else:
                     chat_messages.append(msg)
 
-            # Если нет user-сообщений — Anthropic API вернёт ошибку
             if not chat_messages:
                 raise ValueError("No user/assistant messages — Anthropic requires at least one")
 

@@ -2,8 +2,8 @@
 # Восстановить: pip install -r requirements.txt
 
 # AI APIs
-openai==2.24.0
-anthropic
+openai>=1.30.0,<2.0.0
+anthropic>=0.25.0
 
 # Web framework (для WB_BOT web/)
 fastapi==0.135.1

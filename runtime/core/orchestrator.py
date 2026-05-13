@@ -32,19 +32,11 @@ def _load_skill_file(filename: str) -> str | None:
 
 
 def _load_skill(skill: str) -> tuple[str, str]:
-    """
-    Загрузить skill по имени.
-    Если skill не найден в карте — использовать BOOTSTRAP как fallback.
-    Возвращает (содержимое файла, фактическое имя skill).
-    """
     skill_file = SKILL_FILE_MAP.get(skill)
-
     if skill_file:
         content = _load_skill_file(skill_file)
         if content:
             return content, skill
-
-    # BOOTSTRAP FALLBACK
     print(f">>> SKILL '{skill}' not found → BOOTSTRAP fallback")
     content = _load_skill_file(BOOTSTRAP_FILE)
     return content or "", "bootstrap"
@@ -67,21 +59,30 @@ class Orchestrator:
     def __init__(self):
         self.registry = build_default_registry()
 
-    def run(self, mode: str, goal: str, model: str = "openai", temperature: float = 0.2) -> dict:
+    def run(
+        self,
+        mode: str,
+        goal: str,
+        model: str = "openai",
+        temperature: float = 0.2,
+        agent_type: str = None,
+        risk_level: str = None,
+    ) -> dict:
 
         agent = self.registry.get(mode)
         if not agent:
             raise ValueError(f"Unknown mode: {mode}")
 
-        skill = agent["skill"]
-        risk  = agent["risk"]
+        # Allow CLI overrides for meta_agent mode
+        skill = agent_type if agent_type else agent["skill"]
+        risk  = risk_level  if risk_level  else agent["risk"]
 
         authorize(skill, risk)
 
         prompt_data = self.registry.load_prompt(mode)
         system_prompt = prompt_data["system"]
 
-        # === SKILL INJECTION (с BOOTSTRAP fallback) ===
+        # === SKILL INJECTION ===
         skill_rules, active_skill = _load_skill(skill)
         if skill_rules:
             system_prompt = (
@@ -125,10 +126,13 @@ class Orchestrator:
         # === EVALUATION ===
         eval_score, _ = evaluate(content, mode)
 
+        # === CONTENT DRIFT ===
         if active_skill in ("analyzer", "bootstrap"):
             drift_details = {"score": 0.0}
         else:
-            _, drift_details = detect_drift(goal, content)
+            drifted, drift_details = detect_drift(goal, content)
+            if drifted:
+                print(f"⚠️ CONTENT DRIFT: score={drift_details.get('score')}")
 
         log = {
             "mode":        mode,
