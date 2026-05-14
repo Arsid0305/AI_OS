@@ -23,6 +23,7 @@
 AI_OS/
 ├── SYSTEM.md              ← ты здесь (читать первым)
 ├── CLAUDE.md              ← адаптер для Claude Code
+├── .cursor/rules/ai-os.mdc← адаптер для Cursor
 ├── MEMORY/
 │   ├── lessons/lessons.md ← накопленные уроки (читать)
 │   └── tasks/             ← активные задачи
@@ -36,7 +37,8 @@ AI_OS/
 │   ├── ARCHITECTURE.md    ← архитектура системы
 │   ├── AI_TESTING.md      ← инструкция по тестированию AI
 │   ├── ai_benchmark.md    ← результаты тестов (прогоны)
-│   └── памятка.md         ← памятка по работе с AI_OS
+│   ├── памятка.md         ← памятка по работе с AI_OS
+│   └── SESSION_EPICRISIS.md← контекст сессии аудита
 └── projects/              ← результаты работы AI
 ```
 
