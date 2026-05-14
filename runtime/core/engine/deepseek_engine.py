@@ -1,9 +1,14 @@
+from __future__ import annotations
+
+import logging
 import os
 import time
+
 from openai import OpenAI
 from core.engine.base_engine import BaseEngine
 
-# DeepSeek через OpenAI-совместимый API
+logger = logging.getLogger(__name__)
+
 MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 _BASE_URL = "https://api.deepseek.com"
 
@@ -13,13 +18,13 @@ class DeepSeekEngine(BaseEngine):
     def __init__(self):
         api_key = os.getenv("DEEPSEEK_API_KEY", "")
         if not api_key:
-            raise RuntimeError("⛔ DEEPSEEK_API_KEY не задан. Добавь в .env: DEEPSEEK_API_KEY=...")
+            raise RuntimeError("DEEPSEEK_API_KEY не задан. Добавь в .env: DEEPSEEK_API_KEY=...")
         self._client = OpenAI(api_key=api_key, base_url=_BASE_URL)
 
     def call(self, messages: list[dict], temperature: float = 0.2, **kwargs) -> dict | None:
         start = time.time()
         try:
-            print(f">>> [DeepSeek] CALL START ({MODEL})")
+            logger.debug("[DeepSeek] CALL START model=%s", MODEL)
             response = self._client.chat.completions.create(
                 model=MODEL,
                 messages=messages,
@@ -29,7 +34,7 @@ class DeepSeekEngine(BaseEngine):
             )
             latency = round(time.time() - start, 2)
             usage = response.usage
-            print(f">>> [DeepSeek] DONE: {latency}s")
+            logger.debug("[DeepSeek] DONE: %.2fs", latency)
             return {
                 "content": response.choices[0].message.content,
                 "latency": latency,
@@ -38,5 +43,5 @@ class DeepSeekEngine(BaseEngine):
                 "model": MODEL,
             }
         except Exception as e:
-            print(f"⛔ [DeepSeek] ERROR: {e}")
+            logger.error("[DeepSeek] ERROR: %s", e)
             return None

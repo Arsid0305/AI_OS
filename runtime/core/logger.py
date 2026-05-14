@@ -1,33 +1,48 @@
-"""Logger — запись событий в консоль и файл.
+"""Logger — центральная настройка logging для AI_OS.
 
-Лог-файл: runtime/logs/ai_os.log
-Ротация: новый файл каждый день (суффикс даты).
+Настраивает root logger один раз при импорте:
+  - Консоль: INFO+ (только важное)
+  - Файл:    DEBUG+ (всё, для отладки)
+
+Лог-файл: runtime/logs/ai_os_YYYY-MM-DD.log
 """
 
 import json
+import logging
 from datetime import datetime, date
 from pathlib import Path
 
 _LOGS_DIR = Path(__file__).resolve().parents[1] / "logs"
 
 
-def _get_log_file() -> Path:
+def _setup_logging() -> None:
     _LOGS_DIR.mkdir(exist_ok=True)
-    return _LOGS_DIR / f"ai_os_{date.today().isoformat()}.log"
+    log_file = _LOGS_DIR / f"ai_os_{date.today().isoformat()}.log"
+
+    fmt = "%(asctime)s %(levelname)-8s %(name)s — %(message)s"
+    datefmt = "%H:%M:%S"
+
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    console.setFormatter(logging.Formatter(fmt, datefmt))
+
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(logging.Formatter(fmt, datefmt))
+
+    root = logging.getLogger()
+    if not root.handlers:  # идемпотентно — не дублируем при повторном импорте
+        root.setLevel(logging.DEBUG)
+        root.addHandler(console)
+        root.addHandler(file_handler)
 
 
-def log_event(data: dict):
-    data = dict(data)  # не мутируем оригинал
+_setup_logging()
+
+_logger = logging.getLogger("ai_os")
+
+
+def log_event(data: dict) -> None:
+    data = dict(data)
     data["timestamp"] = datetime.utcnow().isoformat()
-
-    line = json.dumps(data, ensure_ascii=False)
-
-    # Консоль
-    print(line)
-
-    # Файл
-    try:
-        with open(_get_log_file(), "a", encoding="utf-8") as f:
-            f.write(line + "\n")
-    except Exception as e:
-        print(f"⚠️ Logger write error: {e}")
+    _logger.info(json.dumps(data, ensure_ascii=False))

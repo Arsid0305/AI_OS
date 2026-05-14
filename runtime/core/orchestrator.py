@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 
 from core.agent_registry import build_default_registry
@@ -10,6 +11,8 @@ from core.eval import evaluate
 from core.drift import detect_drift
 from core.state import save_session
 from core.memory_writer import append_bug
+
+logger = logging.getLogger(__name__)
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 _SKILLS_DIR = os.path.join(_BASE_DIR, "skills_sistem", "agents")
@@ -35,18 +38,18 @@ BOOTSTRAP_FILE = "SKILL-00_BOOTSTRAP.md"
 
 def _load_skill_file(filename: str) -> str | None:
     path = os.path.join(_SKILLS_DIR, filename)
-    print(f">>> SKILL LOAD: {path}")
+    logger.debug("SKILL LOAD: %s", path)
     try:
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        print(f">>> SKILL FILE NOT FOUND: {filename}")
+        logger.warning("SKILL FILE NOT FOUND: %s", filename)
         return None
 
 
 def _load_skill(skill: str) -> tuple[str, str]:
     if skill not in SKILL_FILE_MAP:
-        print(f"⚠️ UNKNOWN SKILL: '{skill}' — not registered in SKILL_FILE_MAP, falling back to BOOTSTRAP")
+        logger.warning("UNKNOWN SKILL '%s' — falling back to BOOTSTRAP", skill)
         content = _load_skill_file(BOOTSTRAP_FILE)
         return content or "", "bootstrap"
 
@@ -54,7 +57,7 @@ def _load_skill(skill: str) -> tuple[str, str]:
     if content:
         return content, skill
 
-    print(f"⚠️ SKILL FILE MISSING on disk for registered skill '{skill}' — falling back to BOOTSTRAP")
+    logger.warning("SKILL FILE MISSING for '%s' — falling back to BOOTSTRAP", skill)
     content = _load_skill_file(BOOTSTRAP_FILE)
     return content or "", "bootstrap"
 
@@ -62,12 +65,12 @@ def _load_skill(skill: str) -> tuple[str, str]:
 def _load_domain(mode: str) -> str | None:
     runtime_dir = os.path.join(_BASE_DIR, "runtime")
     path = os.path.join(runtime_dir, "prompts", mode, f"{mode}.md")
-    print(f">>> DOMAIN LOAD: {path}")
+    logger.debug("DOMAIN LOAD: %s", path)
     try:
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        print(">>> DOMAIN FILE NOT FOUND")
+        logger.debug("DOMAIN FILE NOT FOUND for mode '%s'", mode)
         return None
 
 
@@ -96,17 +99,15 @@ class Orchestrator:
         try:
             authorize(skill, risk)
         except Exception as e:
-            print(f"⛔ CONFLICT PROTOCOL: {e}")
+            logger.error("CONFLICT PROTOCOL blocked: %s", e)
             return {"content": "", "eval_score": 0.0}
 
         prompt_data = self.registry.load_prompt(mode)
         system_prompt = prompt_data["system"]
 
-        # === ADAPTIVE MODEL (Anthropic only) ===
         claude_tier = prompt_data.get("claude_tier", "sonnet")
         resolved_claude_model = _CLAUDE_TIER_MAP.get(claude_tier, "claude-sonnet-4-6")
 
-        # === SKILL INJECTION ===
         skill_rules, active_skill = _load_skill(skill)
         if skill_rules:
             system_prompt = (
@@ -115,51 +116,45 @@ class Orchestrator:
                 f"{skill_rules}\n\n---\n\n"
                 f"{system_prompt}"
             )
-            print(f">>> SKILL LOADED: {active_skill}")
+            logger.debug("SKILL LOADED: %s", active_skill)
 
-        # === DOMAIN INJECTION ===
         domain_rules = _load_domain(mode)
         if domain_rules:
             system_prompt = (
                 f"CRITICAL DOMAIN RULES:\n\n{domain_rules}\n\n---\n\n"
                 f"{system_prompt}"
             )
-            print(">>> DOMAIN LOADED")
+            logger.debug("DOMAIN LOADED for mode '%s'", mode)
 
-        # === BUILD MESSAGES ===
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": prompt_data["user_template"].format(input=goal)},
         ]
 
-        # === ENGINE CALL ===
         engine = get_engine(model)
         if model == "anthropic":
-            print(f">>> [Anthropic] tier={claude_tier} → {resolved_claude_model}")
+            logger.debug("[Anthropic] tier=%s → %s", claude_tier, resolved_claude_model)
             result = engine.call(messages, temperature=temperature, model=resolved_claude_model)
         else:
             result = engine.call(messages, temperature=temperature)
 
         if not result or "content" not in result:
-            print("⛔ MODEL FAILED → returning empty safe output")
+            logger.error("MODEL FAILED — returning empty safe output")
             return {"content": "", "eval_score": 0.0}
 
         content = result.get("content", "")
 
-        # === ROLE DRIFT DETECTION ===
         decision_markers = ["Decision:", "Action:", "I recommend", "We should"]
         if any(m in content for m in decision_markers):
-            print("⚠️ ROLE DRIFT: decision detected")
+            logger.warning("ROLE DRIFT: decision marker detected in output")
 
-        # === EVALUATION ===
         eval_score, _ = evaluate(content, mode)
 
-        # === CONTENT DRIFT ===
         drift_details = {"score": 1.0}
         if active_skill not in ("analyzer", "bootstrap"):
             drifted, drift_details = detect_drift(goal, content)
             if drifted:
-                print(f"⚠️ CONTENT DRIFT: score={drift_details.get('score')}")
+                logger.warning("CONTENT DRIFT: score=%.2f", drift_details.get("score", 0))
                 if drift_details.get("score", 1.0) < 0.3:
                     append_bug(
                         title=f"Content drift: {mode}/{active_skill}",
@@ -167,7 +162,6 @@ class Orchestrator:
                         file_path="runtime/core/orchestrator.py",
                     )
 
-        # === PERSIST SESSION ===
         save_session(mode, model, active_skill, eval_score)
 
         log = {
@@ -180,8 +174,7 @@ class Orchestrator:
             "drift_score": drift_details.get("score"),
             "latency":     result.get("latency"),
         }
-        print("\n\U0001f9e0 ORCHESTRATOR LOG")
-        print(json.dumps(log, indent=2, ensure_ascii=False))
+        logger.info("ORCHESTRATOR LOG: %s", json.dumps(log, ensure_ascii=False))
 
         result["eval_score"] = eval_score
         return result
