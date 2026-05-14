@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """AI_OS v3 Professional"""
-
 import argparse
 import sys
 import re
-
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -15,32 +13,19 @@ from core.unit_calc import calculate_unit_economics
 from core.project_manager import save_run
 from core.orchestrator import Orchestrator
 
-
 MODES = [
-    "meta_agent",
-    "meta_prompt",
-    "marketplace",
-    "research",
-    "visual",
-    "code",
-    "review",
-    "decision",
-    "legal",
-    "medical",
-    "tables",
-    "writing",
+    "meta_agent", "meta_prompt", "marketplace", "research",
+    "visual", "code", "review", "decision",
+    "legal", "medical", "tables", "writing",
 ]
 
 
 def extract_number(pattern, text):
     match = re.search(pattern, text, re.IGNORECASE)
-    if not match:
-        return None
-    return float(match.group(1))
+    return float(match.group(1)) if match else None
 
 
 def run(args):
-
     # 1. Startup validation
     errors = startup_validate(args.model)
     if errors:
@@ -57,7 +42,7 @@ def run(args):
 
     strict_block = ""
 
-    # 3. STRICT FINANCE BLOCK
+    # 3. Marketplace strict finance block
     if args.mode == "marketplace" and args.precision == "strict":
         try:
             price      = extract_number(r"Цена\s*(\d+)", args.goal)
@@ -69,18 +54,18 @@ def run(args):
             ad         = extract_number(r"реклама\s*(\d+)", args.goal)
 
             if None in [price, cogs, commission, logistics, traffic, cvr_raw]:
-                raise ValueError("Missing required numeric inputs")
+                raise ValueError("Не указаны обязательные числа: цена, себестоимость, комиссия, логистика, трафик, CVR")
+
+            if ad is None:
+                print("⚠️  Реклама не указана — используется 0")
 
             calc = calculate_unit_economics(
-                price=price,
-                cogs=cogs,
+                price=price, cogs=cogs,
                 commission_percent=commission,
-                logistics=logistics,
-                traffic=traffic,
+                logistics=logistics, traffic=traffic,
                 cvr=cvr_raw / 100,
-                ad_percent=ad
+                ad_percent=ad,
             )
-
             strict_block = f"""
 STRICT NUMERIC CALCULATION (Python authoritative)
 
@@ -97,23 +82,18 @@ These numbers are final and authoritative.
         except Exception as e:
             strict_block = f"\nSTRICT CALCULATION FAILED: {e}\n"
 
-    # 4. Формирование input
-    if args.mode == "marketplace":
-        user_input = f"Precision mode: {args.precision}\n\n{strict_block}\nOriginal Input:\n{args.goal}"
-    else:
-        user_input = args.goal
+    user_input = (
+        f"Precision mode: {args.precision}\n\n{strict_block}\nOriginal Input:\n{args.goal}"
+        if args.mode == "marketplace" else args.goal
+    )
 
-    print(f"🚀 Mode: {args.mode}")
-    print(f"   Model: {args.model}")
+    print(f"🚀 Mode: {args.mode} | Model: {args.model}")
     print(f"   Goal: {args.goal}")
-    print("   Orchestrator running...\n")
+    print("   Running...\n")
 
-    # 5. Run
     orch = Orchestrator()
     result = orch.run(
-        mode=args.mode,
-        goal=user_input,
-        model=args.model,
+        mode=args.mode, goal=user_input, model=args.model,
         temperature=args.temperature,
         agent_type=args.agent_type,
         risk_level=args.risk_level,
@@ -135,17 +115,11 @@ These numbers are final and authoritative.
         "eval_score":        eval_score,
         "precision":         args.precision,
     }
-
     log_event({"agent": args.mode, **metadata})
 
     if args.project:
-        saved_path = save_run(
-            project_name=args.project,
-            mode=args.mode,
-            content=content,
-            metadata=metadata
-        )
-        print(f"\n📁 Saved to project: {saved_path}")
+        saved = save_run(args.project, args.mode, content, metadata)
+        print(f"\n📁 Saved to project: {saved}")
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
