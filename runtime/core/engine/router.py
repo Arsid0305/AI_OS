@@ -1,10 +1,10 @@
 """Router — выбирает движок по имени модели.
 
 Поддерживаемые значения --model:
-  openai     → OpenAIEngine    (OPENAI_API_KEY)
-  anthropic  → AnthropicEngine (ANTHROPIC_API_KEY) — то же что и Claude
-  gemini     → GeminiEngine    (GOOGLE_API_KEY)
-  deepseek   → DeepSeekEngine  (DEEPSEEK_API_KEY)
+  openai             → OpenAIEngine    (OPENAI_API_KEY)
+  anthropic / claude → AnthropicEngine (ANTHROPIC_API_KEY)
+  gemini             → GeminiEngine    (GOOGLE_API_KEY)
+  deepseek           → DeepSeekEngine  (DEEPSEEK_API_KEY)
 """
 
 from core.engine.base_engine import BaseEngine
@@ -17,7 +17,7 @@ def get_engine(model: str) -> BaseEngine:
         from core.engine.openai_engine import OpenAIEngine
         return OpenAIEngine()
 
-    elif model == "anthropic":
+    elif model in ("anthropic", "claude"):
         from core.engine.anthropic_engine import AnthropicEngine
         return AnthropicEngine()
 
@@ -30,4 +30,6 @@ def get_engine(model: str) -> BaseEngine:
         return DeepSeekEngine()
 
     else:
-        raise ValueError(f"Unknown model: '{model}'. Valid: openai, anthropic, gemini, deepseek")
+        raise ValueError(
+            f"Unknown model: '{model}'. Valid: openai, anthropic, claude, gemini, deepseek"
+        )

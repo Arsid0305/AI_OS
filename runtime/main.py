@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """AI_OS v3 Professional"""
+from __future__ import annotations
 import argparse
 import sys
 import re
@@ -20,12 +21,12 @@ MODES = [
 ]
 
 
-def extract_number(pattern, text):
+def extract_number(pattern: str, text: str) -> float | None:
     match = re.search(pattern, text, re.IGNORECASE)
     return float(match.group(1)) if match else None
 
 
-def run(args):
+def run(args: argparse.Namespace) -> None:
     # 1. Startup validation
     errors = startup_validate(args.model)
     if errors:
@@ -53,8 +54,23 @@ def run(args):
             cvr_raw    = extract_number(r"CVR\s*(\d+\.?\d*)", args.goal)
             ad         = extract_number(r"реклама\s*(\d+)", args.goal)
 
-            if None in [price, cogs, commission, logistics, traffic, cvr_raw]:
-                raise ValueError("Не указаны обязательные числа: цена, себестоимость, комиссия, логистика, трафик, CVR")
+            missing = [
+                name for name, val in [
+                    ("цена", price), ("себестоимость", cogs),
+                    ("комиссия", commission), ("логистика", logistics),
+                    ("трафик", traffic), ("CVR", cvr_raw),
+                ] if val is None
+            ]
+            if missing:
+                raise ValueError(f"Не указаны обязательные числа: {', '.join(missing)}")
+
+            # Explicit assertions for static type narrowing (Pyright/mypy)
+            assert price is not None
+            assert cogs is not None
+            assert commission is not None
+            assert logistics is not None
+            assert traffic is not None
+            assert cvr_raw is not None
 
             if ad is None:
                 print("⚠️  Реклама не указана — используется 0")
@@ -127,7 +143,7 @@ These numbers are final and authoritative.
         print(f"\n💾 Saved: {args.output}")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="AI_OS v3 Professional")
     parser.add_argument("--diagnose", action="store_true",
                         help="Print system diagnostics and exit")
