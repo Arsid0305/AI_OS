@@ -26,10 +26,18 @@ def _file_contains(path: Path, text: str) -> bool:
     return text in path.read_text(encoding="utf-8")
 
 
+def _bug_exists(path: Path, title: str) -> bool:
+    """Check if a bug with this title exists regardless of date."""
+    if not path.exists():
+        return False
+    content = path.read_text(encoding="utf-8")
+    return bool(re.search(rf"## \[\d{{4}}-\d{{2}}-\d{{2}}\] {re.escape(title)}", content))
+
+
 def append_bug(title: str, problem: str, file_path: str = "") -> None:
-    """Append to MEMORY/tasks/bugs.md. Deduplicates by title."""
+    """Append to MEMORY/tasks/bugs.md. Deduplicates by title (ignores date)."""
     path = _MEMORY_ROOT / "tasks" / "bugs.md"
-    if _file_contains(path, f"## [{_today()}] {title}"):
+    if _bug_exists(path, title):
         return
     entry = (
         f"\n## [{_today()}] {title}\n"
@@ -55,7 +63,6 @@ def close_bug(title: str) -> bool:
         return False
 
     start = match.start()
-    # Find end of this bug section (next ## [ header or EOF)
     next_section = re.search(r"\n## \[", content[start + 1:])
     end = start + 1 + next_section.start() if next_section else len(content)
 
