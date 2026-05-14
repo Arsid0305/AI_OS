@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 
@@ -158,7 +160,6 @@ class Orchestrator:
             drifted, drift_details = detect_drift(goal, content)
             if drifted:
                 print(f"⚠️ CONTENT DRIFT: score={drift_details.get('score')}")
-                # Log bug only for severe drift (score < 0.3 = very few keywords matched)
                 if drift_details.get("score", 1.0) < 0.3:
                     append_bug(
                         title=f"Content drift: {mode}/{active_skill}",

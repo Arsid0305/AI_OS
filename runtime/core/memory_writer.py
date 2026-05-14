@@ -4,6 +4,7 @@ Append-only. Never overwrites existing content.
 Use state.py for ephemeral runtime state.
 """
 
+import re
 from datetime import date
 from pathlib import Path
 
@@ -48,13 +49,10 @@ def close_bug(title: str) -> bool:
     content = path.read_text(encoding="utf-8")
     if title not in content:
         return False
-    # Find the specific bug section and close only it
-    pattern = f"## [" + r"\d{{4}}-\d{{2}}-\d{{2}}" + f"] {re.escape(title)}"
-    import re
+    pattern = r"## \[\d{4}-\d{2}-\d{2}\] " + re.escape(title)
     match = re.search(pattern, content)
     if not match:
         return False
-    # Replace only the status in this specific bug's section
     start = match.start()
     section = content[start:]
     updated_section = section.replace("**Статус:** open", "**Статус:** closed", 1)

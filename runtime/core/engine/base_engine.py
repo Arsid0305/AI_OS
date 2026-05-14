@@ -10,6 +10,8 @@
   - tokens_completion: int
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 
