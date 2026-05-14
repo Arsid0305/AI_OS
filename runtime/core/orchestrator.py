@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 import logging
+import time
 from core.config import Paths, Models
 from core.agent_registry import build_default_registry
 from core.conflict_protocol import authorize
@@ -107,11 +108,18 @@ class Orchestrator:
         ]
 
         engine = get_engine(model)
-        if model == "anthropic":
-            logger.debug("[Anthropic] tier=%s → %s", claude_tier, resolved_model)
-            result = engine.call(messages, temperature=temperature, model=resolved_model)
-        else:
-            result = engine.call(messages, temperature=temperature)
+        result = None
+        for _attempt in range(3):
+            if model == "anthropic":
+                logger.debug("[Anthropic] tier=%s → %s", claude_tier, resolved_model)
+                result = engine.call(messages, temperature=temperature, model=resolved_model)
+            else:
+                result = engine.call(messages, temperature=temperature)
+            if result is not None:
+                break
+            if _attempt < 2:
+                logger.warning("Engine returned None, retry %d/3", _attempt + 2)
+                time.sleep(2 ** _attempt)
 
         if not result or "content" not in result:
             logger.error("MODEL FAILED — returning empty safe output")
