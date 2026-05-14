@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AI_OS v3 Professional — CLEAN ORCHESTRATOR VERSION"""
+"""AI_OS v3 Professional"""
 
 import argparse
 import sys
@@ -8,8 +8,9 @@ import re
 from dotenv import load_dotenv
 load_dotenv()
 
-from core.identity import verify_identity
 from core.logger import log_event
+from core.startup import validate as startup_validate
+from core.identity import verify_identity
 from core.unit_calc import calculate_unit_economics
 from core.project_manager import save_run
 from core.orchestrator import Orchestrator
@@ -40,7 +41,14 @@ def extract_number(pattern, text):
 
 def run(args):
 
-    # 1. Identity check
+    # 1. Startup validation
+    errors = startup_validate(args.model)
+    if errors:
+        for e in errors:
+            print(f"❌ {e}")
+        sys.exit(1)
+
+    # 2. Identity check
     try:
         verify_identity()
     except RuntimeError as e:
@@ -49,7 +57,7 @@ def run(args):
 
     strict_block = ""
 
-    # 2. STRICT FINANCE BLOCK
+    # 3. STRICT FINANCE BLOCK
     if args.mode == "marketplace" and args.precision == "strict":
         try:
             price      = extract_number(r"Цена\s*(\d+)", args.goal)
@@ -89,7 +97,7 @@ These numbers are final and authoritative.
         except Exception as e:
             strict_block = f"\nSTRICT CALCULATION FAILED: {e}\n"
 
-    # 3. Формирование input
+    # 4. Формирование input
     if args.mode == "marketplace":
         user_input = f"Precision mode: {args.precision}\n\n{strict_block}\nOriginal Input:\n{args.goal}"
     else:
@@ -100,15 +108,15 @@ These numbers are final and authoritative.
     print(f"   Goal: {args.goal}")
     print("   Orchestrator running...\n")
 
-    # 4. Run
+    # 5. Run
     orch = Orchestrator()
     result = orch.run(
         mode=args.mode,
         goal=user_input,
         model=args.model,
         temperature=args.temperature,
-        agent_type=args.agent_type,   # None → orchestrator uses registry skill
-        risk_level=args.risk_level,   # None → orchestrator uses registry risk
+        agent_type=args.agent_type,
+        risk_level=args.risk_level,
     )
 
     content = result.get("content", "")
@@ -148,11 +156,11 @@ These numbers are final and authoritative.
 def main():
     parser = argparse.ArgumentParser(description="AI_OS v3 Professional")
     parser.add_argument("--mode",        required=True, choices=MODES)
-    parser.add_argument("--model",       default="openai")  # openai | anthropic
+    parser.add_argument("--model",       default="openai")
     parser.add_argument("--goal",        required=True)
     parser.add_argument("--precision",   choices=["hypothesis", "approx", "strict"], default="hypothesis")
-    parser.add_argument("--agent_type",  default=None)   # None = use registry skill
-    parser.add_argument("--risk_level",  default=None)   # None = use registry risk
+    parser.add_argument("--agent_type",  default=None)
+    parser.add_argument("--risk_level",  default=None)
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--project")
     parser.add_argument("--output", "-o")
