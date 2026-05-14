@@ -22,7 +22,6 @@ class AgentRegistry:
         return list(self.agents.keys())
 
     def load_prompt(self, name):
-        """Load versioned prompt JSON for agent's domain."""
         agent = self.get(name)
         if not agent:
             raise ValueError(f"Agent not registered: {name}")
@@ -34,11 +33,22 @@ class AgentRegistry:
 
 
 def build_default_registry():
-    """Create registry with all standard agents."""
     reg = AgentRegistry()
-    reg.register("meta_agent", "meta_agent", "analyzer", "low")
+
+    # анализ и исследования
+    reg.register("meta_agent",  "meta_agent",  "analyzer", "low")
     reg.register("meta_prompt", "meta_prompt", "analyzer", "low")
     reg.register("marketplace", "marketplace", "analyzer", "medium")
-    reg.register("research", "research", "analyzer", "low")
-    reg.register("visual", "visual", "planner", "low")
+    reg.register("research",    "research",    "researcher", "low")
+    reg.register("code",        "code",        "operator",  "low")
+    reg.register("review",      "review",      "critic",    "low")
+    reg.register("decision",    "decision",    "planner",   "medium")
+
+    # специализированные домены
+    reg.register("legal",       "legal",       "analyzer",  "high")
+    reg.register("medical",     "medical",     "analyzer",  "high")
+    reg.register("tables",      "tables",      "operator",  "low")
+    reg.register("writing",     "writing",     "writer",    "low")
+    reg.register("visual",      "visual",      "planner",   "low")
+
     return reg
