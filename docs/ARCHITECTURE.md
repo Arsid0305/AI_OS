@@ -1,66 +1,145 @@
-# AI_OS — Архитектура движка (мультимодельная)
+# AI_OS — Архитектура (финал)
 
-## Структура core/engine/
+> Актуально на: 2026-05-14
 
 ```
-core/engine/
-  __init__.py
-  base_engine.py        ← Контракт: абстрактный BaseEngine.call()
-  openai_engine.py      ← Реализация: OpenAI SDK
-  anthropic_engine.py   ← Реализация: Anthropic SDK (Claude)
-  router.py             ← Маршрутизатор по имени модели
+AI_OS/
+│
+├── ── CORE ──────────────────────────────────────────────
+│   └── SYSTEM.md                  ← универсальные правила (любой AI)
+│
+├── ── ADAPTERS ──────────────────────────────────────────
+│   └── CLAUDE.md                  ← Claude Code adapter
+│
+├── ── MEMORY ────────────────────────────────────────────
+│   ├── tasks/
+│   │   ├── bugs.md                ← открытые баги (dedup по title)
+│   │   ├── todo.md                ← активные задачи
+│   │   └── decisions.md           ← архитектурные решения
+│   ├── lessons/
+│   │   └── lessons.md             ← накопленные уроки
+│   └── archive/                   ← hygiene output
+│
+├── ── RUNTIME ───────────────────────────────────────────
+│   ├── main.py                    ← CLI entry (--diagnose / --mode)
+│   ├── system_identity.json       ← integrity hash
+│   ├── requirements.txt
+│   ├── logs/                      ← structured logs
+│   ├── core/
+│   │   ├── config.py              ← Paths + Models (единый источник)
+│   │   ├── schemas.py             ← Pydantic PromptConfig
+│   │   ├── startup.py             ← валидация при старте
+│   │   ├── diagnostics.py         ← --diagnose вывод
+│   │   ├── logger.py              ← console + file logging
+│   │   ├── identity.py            ← integrity check
+│   │   ├── orchestrator.py        ← routing + skill injection
+│   │   ├── agent_registry.py      ← 12 режимов
+│   │   ├── conflict_protocol.py   ← risk authorization
+│   │   ├── drift.py               ← content drift detection
+│   │   ├── eval.py                ← output evaluation
+│   │   ├── state.py               ← session state (JSON)
+│   │   ├── memory_writer.py       ← runtime → MEMORY bridge
+│   │   ├── memory_hygiene.py      ← lifecycle / archive
+│   │   ├── project_manager.py     ← save runs (path traversal guard)
+│   │   ├── unit_calc.py           ← marketplace calculations
+│   │   └── engine/
+│   │       ├── base_engine.py     ← абстрактный контракт (**kwargs)
+│   │       ├── router.py          ← провайдер по имени модели
+│   │       ├── openai_engine.py
+│   │       ├── anthropic_engine.py
+│   │       ├── gemini_engine.py
+│   │       └── deepseek_engine.py
+│   ├── prompts/                   ← 12 папок × v1.json (PromptConfig)
+│   └── tests/
+│       ├── conftest.py
+│       ├── test_registry.py
+│       ├── test_prompts.py
+│       ├── test_orchestrator.py
+│       └── test_startup.py
+│
+├── ── SKILLS ────────────────────────────────────────────
+│   └── skills_sistem/agents/
+│       ├── SKILL-00_BOOTSTRAP.md
+│       ├── SKILL-01_ANALYZER.md
+│       ├── SKILL-02_VALIDATOR.md
+│       ├── SKILL-03_PLANNER.md
+│       ├── SKILL-04_OPERATOR.md
+│       ├── SKILL-05_WRITER.md
+│       ├── SKILL-06_RESEARCHER.md
+│       └── SKILL-07_CRITIC.md
+│
+├── ── APPLICATIONS ──────────────────────────────────────
+│   └── projects/
+│       └── WB_BOT/                ← следующая сессия
+│
+├── ── DOCS ──────────────────────────────────────────────
+│   └── docs/
+│       ├── ARCHITECTURE.md        ← этот файл
+│       └── SESSION_EPICRISIS.md   ← контекст сессии аудита
+│
+└── ── CI/CD ─────────────────────────────────────────────
+    └── .github/workflows/
+        ├── automerge.yml          ← claude/... → dev
+        └── promote.yml            ← dev → main
+
 ```
 
-## Как добавить новый движок
+---
 
-1. Создать `core/engine/gemini_engine.py`
-2. Унаследовать `BaseEngine`
-3. Реализовать `call(messages, temperature) -> dict | None`
-4. Добавить в `router.py`:
-   ```python
-   elif model == "gemini":
-       from core.engine.gemini_engine import GeminiEngine
-       return GeminiEngine()
-   ```
+## Движки (engine/)
 
-## Формат вывода (обязателен для всех движков)
+| Провайдер | Алиас `--model` | Ключ |
+|---|---|---|
+| OpenAI | `openai` | `OPENAI_API_KEY` |
+| Anthropic | `anthropic`, `claude` | `ANTHROPIC_API_KEY` |
+| Gemini | `gemini` | `GOOGLE_API_KEY` |
+| DeepSeek | `deepseek` | `DEEPSEEK_API_KEY` |
 
+Формат вывода (обязателен для всех движков):
 ```python
 {
-    "content": str,          # текст ответа
-    "model": str,            # идентификатор модели
-    "latency": float,        # секунды
-    "tokens_prompt": int,    # входящие токены
-    "tokens_completion": int # исходящие токены
+    "content": str,
+    "model": str,
+    "latency": float,
+    "tokens_prompt": int,
+    "tokens_completion": int
 }
 ```
 
-## Использование
+---
+
+## Режимы (12)
+
+`meta_agent` `meta_prompt` `marketplace` `research` `visual`
+`code` `review` `decision` `legal` `medical` `tables` `writing`
+
+---
+
+## Запуск
 
 ```bash
-# OpenAI
-python main.py --mode research --model openai --goal "задача"
-
-# Claude (два алиаса)
-python main.py --mode research --model anthropic --goal "задача"
-python main.py --mode research --model claude --goal "задача"
+cd runtime
+python main.py --diagnose                              # проверка системы
+python main.py --mode code --model openai --goal "..."
+python main.py --mode code --model claude --goal "..."
+pytest tests/                                          # smoke tests
 ```
 
-## Skills: путь
+---
 
-```
-skills_sistem/agents/SKILL-01_ANALYZER.md  ← универсальный путь
-```
+## Как расширять
 
-Каждый skill-файл содержит MODEL-SPECIFIC RULES внутри.
-Orchestrator передаёт MODEL TYPE в system prompt автоматически.
+**Новый режим:**
+1. `prompts/режим/v1.json` (поля: system, user_template, claude_tier)
+2. Строка в `agent_registry.py`
+3. Добавить в `MODES` в `main.py`
 
-## Переменные окружения
+**Новый движок:**
+1. `engine/новый_engine.py` → унаследовать `BaseEngine`
+2. Строка в `router.py` и `startup.py`
 
-```
-OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-4o-mini
+**Новый скил:**
+1. `skills_sistem/agents/SKILL-0N_*.md`
+2. Строка в `SKILL_FILE_MAP` в `orchestrator.py`
 
-ANTHROPIC_API_KEY=...
-ANTHROPIC_MODEL=claude-sonnet-4-20250514
-```
+> Все пути — только через `Paths` из `core/config.py`. После изменений — `pytest tests/`.
