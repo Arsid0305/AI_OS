@@ -7,6 +7,7 @@ from core.config import Paths
 _MODEL_KEY_MAP: dict[str, str] = {
     "openai":    "OPENAI_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
+    "claude":    "ANTHROPIC_API_KEY",
     "gemini":    "GOOGLE_API_KEY",
     "deepseek":  "DEEPSEEK_API_KEY",
 }
