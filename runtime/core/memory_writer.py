@@ -1,14 +1,13 @@
 """Persistent writes to MEMORY/ markdown files.
 
 Append-only. Never overwrites existing content.
-Use state.py for ephemeral runtime state.
 """
-
 import re
 from datetime import date
 from pathlib import Path
+from core.config import Paths
 
-_MEMORY_ROOT = Path(__file__).resolve().parents[2] / "MEMORY"
+_MEMORY_ROOT = Paths.MEMORY_ROOT
 
 
 def _today() -> str:
@@ -28,7 +27,7 @@ def _file_contains(path: Path, text: str) -> bool:
 
 
 def append_bug(title: str, problem: str, file_path: str = "") -> None:
-    """Append to MEMORY/tasks/bugs.md. Deduplicates by title — no spam."""
+    """Append to MEMORY/tasks/bugs.md. Deduplicates by title."""
     path = _MEMORY_ROOT / "tasks" / "bugs.md"
     if _file_contains(path, f"## [{_today()}] {title}"):
         return
@@ -42,28 +41,34 @@ def append_bug(title: str, problem: str, file_path: str = "") -> None:
 
 
 def close_bug(title: str) -> bool:
-    """Mark a bug as closed by title. Returns True if found and updated."""
+    """Mark a specific bug as closed. Only touches that bug's section."""
     path = _MEMORY_ROOT / "tasks" / "bugs.md"
     if not path.exists():
         return False
     content = path.read_text(encoding="utf-8")
     if title not in content:
         return False
+
     pattern = r"## \[\d{4}-\d{2}-\d{2}\] " + re.escape(title)
     match = re.search(pattern, content)
     if not match:
         return False
+
     start = match.start()
-    section = content[start:]
-    updated_section = section.replace("**Статус:** open", "**Статус:** closed", 1)
-    if updated_section == section:
+    # Find end of this bug section (next ## [ header or EOF)
+    next_section = re.search(r"\n## \[", content[start + 1:])
+    end = start + 1 + next_section.start() if next_section else len(content)
+
+    bug_section = content[start:end]
+    updated = bug_section.replace("**Статус:** open", "**Статус:** closed", 1)
+    if updated == bug_section:
         return False
-    path.write_text(content[:start] + updated_section, encoding="utf-8")
+
+    path.write_text(content[:start] + updated + content[end:], encoding="utf-8")
     return True
 
 
 def append_lesson(title: str, what_happened: str, rule: str) -> None:
-    """Append to MEMORY/lessons/lessons.md."""
     path = _MEMORY_ROOT / "lessons" / "lessons.md"
     entry = (
         f"\n## [{_today()}] {title}\n"
@@ -76,7 +81,6 @@ def append_lesson(title: str, what_happened: str, rule: str) -> None:
 def append_decision(
     title: str, context: str, decision: str, reason: str, alternatives: str = ""
 ) -> None:
-    """Append to MEMORY/tasks/decisions.md."""
     path = _MEMORY_ROOT / "tasks" / "decisions.md"
     entry = (
         f"\n## [{_today()}] {title}\n"
@@ -90,7 +94,6 @@ def append_decision(
 
 
 def update_todo_done(task_text: str) -> None:
-    """Mark todo as done. State transition only — preserves timeline."""
     path = _MEMORY_ROOT / "tasks" / "todo.md"
     if not path.exists():
         return

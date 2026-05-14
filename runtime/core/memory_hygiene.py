@@ -3,15 +3,15 @@
 Mechanical rules only. No LLM. Archive-only, no deletion.
 Usage: python -m core.memory_hygiene [--all | --archive-todos | --archive-bugs | --flag-stale | --report]
 """
-
 import json
 import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from core.config import Paths
 
-_MEMORY_ROOT = Path(__file__).resolve().parents[2] / "MEMORY"
-_ARCHIVE_ROOT = _MEMORY_ROOT / "archive"
-_STALE_DAYS = 90
+_MEMORY_ROOT  = Paths.MEMORY_ROOT
+_ARCHIVE_ROOT = Paths.MEMORY_ARCHIVE
+_STALE_DAYS   = 90
 
 
 def _today_str() -> str:
@@ -25,66 +25,42 @@ def _append(path: Path, content: str) -> None:
 
 
 def archive_done_todos() -> int:
-    """Move done todos to archive. Returns count archived."""
     src = _MEMORY_ROOT / "tasks" / "todo.md"
     if not src.exists():
         return 0
-
     lines = src.read_text(encoding="utf-8").splitlines(keepends=True)
-    done = [l for l in lines if l.startswith("- [x]")]
+    done    = [l for l in lines if l.startswith("- [x]")]
     pending = [l for l in lines if not l.startswith("- [x]")]
-
     if not done:
         return 0
-
     src.write_text("".join(pending), encoding="utf-8")
-
-    archive_block = f"\n## Archived: {_today_str()}\n\n" + "".join(done)
-    _append(_ARCHIVE_ROOT / "todo_archive.md", archive_block)
-
+    _append(_ARCHIVE_ROOT / "todo_archive.md",
+            f"\n## Archived: {_today_str()}\n\n" + "".join(done))
     return len(done)
 
 
 def archive_closed_bugs() -> int:
-    """Move closed bugs to archive. Returns count archived."""
     src = _MEMORY_ROOT / "tasks" / "bugs.md"
     if not src.exists():
         return 0
-
     content = src.read_text(encoding="utf-8")
     parts = re.split(r"(?=\n## \[)", content)
-
-    open_parts = []
-    closed_parts = []
-
-    for part in parts:
-        if "**Статус:** closed" in part:
-            closed_parts.append(part)
-        else:
-            open_parts.append(part)
-
+    open_parts   = [p for p in parts if "**Статус:** closed" not in p]
+    closed_parts = [p for p in parts if "**Статус:** closed" in p]
     if not closed_parts:
         return 0
-
     src.write_text("".join(open_parts), encoding="utf-8")
-
-    archive_block = f"\n## Archived: {_today_str()}\n" + "".join(closed_parts)
-    _append(_ARCHIVE_ROOT / "bugs_archive.md", archive_block)
-
+    _append(_ARCHIVE_ROOT / "bugs_archive.md",
+            f"\n## Archived: {_today_str()}\n" + "".join(closed_parts))
     return len(closed_parts)
 
 
 def flag_stale_decisions(stale_days: int = _STALE_DAYS) -> int:
-    """Add [stale?] marker to decisions older than stale_days.
-
-    Marker only — no semantic change, no auto-close, no auto-remove.
-    """
     src = _MEMORY_ROOT / "tasks" / "decisions.md"
     if not src.exists():
         return 0
-
     content = src.read_text(encoding="utf-8")
-    cutoff = date.today() - timedelta(days=stale_days)
+    cutoff  = date.today() - timedelta(days=stale_days)
     flagged = 0
 
     def _flag(m: re.Match) -> str:
@@ -102,16 +78,12 @@ def flag_stale_decisions(stale_days: int = _STALE_DAYS) -> int:
         return m.group(0)
 
     updated = re.sub(r"## \[(\d{4}-\d{2}-\d{2})\] (.+)", _flag, content)
-
     if flagged:
         src.write_text(updated, encoding="utf-8")
-
     return flagged
 
 
 def report() -> dict:
-    """Return hygiene stats as dict and print JSON to console."""
-
     def _count_prefix(path: Path, prefix: str) -> int:
         if not path.exists():
             return 0
@@ -123,39 +95,32 @@ def report() -> dict:
         return path.read_text(encoding="utf-8").count(marker)
 
     decisions_path = _MEMORY_ROOT / "tasks" / "decisions.md"
-
     stats = {
-        "open_bugs":         _count_marker(_MEMORY_ROOT / "tasks" / "bugs.md", "## ["),
-        "open_todos":        _count_prefix(_MEMORY_ROOT / "tasks" / "todo.md", "- [ ]"),
-        "done_todos":        _count_prefix(_MEMORY_ROOT / "tasks" / "todo.md", "- [x]"),
-        "lessons_count":     _count_marker(_MEMORY_ROOT / "lessons" / "lessons.md", "## ["),
-        "decisions_count":   _count_marker(decisions_path, "## ["),
-        "stale_decisions":   _count_marker(decisions_path, "[stale?]"),
+        "open_bugs":       _count_marker(_MEMORY_ROOT / "tasks" / "bugs.md", "## ["),
+        "open_todos":      _count_prefix(_MEMORY_ROOT / "tasks" / "todo.md", "- [ ]"),
+        "done_todos":      _count_prefix(_MEMORY_ROOT / "tasks" / "todo.md", "- [x]"),
+        "lessons_count":   _count_marker(_MEMORY_ROOT / "lessons" / "lessons.md", "## ["),
+        "decisions_count": _count_marker(decisions_path, "## ["),
+        "stale_decisions": _count_marker(decisions_path, "[stale?]"),
     }
-
     print(json.dumps(stats, indent=2, ensure_ascii=False))
     return stats
 
 
 if __name__ == "__main__":
     import argparse
-
     parser = argparse.ArgumentParser(description="MEMORY hygiene tool")
-    parser.add_argument("--archive-todos", action="store_true", help="Archive done todos")
-    parser.add_argument("--archive-bugs",  action="store_true", help="Archive closed bugs")
-    parser.add_argument("--flag-stale",    action="store_true", help="Flag stale decisions (marker only)")
-    parser.add_argument("--report",        action="store_true", help="Print hygiene report")
-    parser.add_argument("--all",           action="store_true", help="Run all operations + report")
+    parser.add_argument("--archive-todos", action="store_true")
+    parser.add_argument("--archive-bugs",  action="store_true")
+    parser.add_argument("--flag-stale",    action="store_true")
+    parser.add_argument("--report",        action="store_true")
+    parser.add_argument("--all",           action="store_true")
     args = parser.parse_args()
-
     if args.all or args.archive_todos:
-        n = archive_done_todos()
-        print(f"✓ archived {n} done todos")
+        print(f"✓ archived {archive_done_todos()} done todos")
     if args.all or args.archive_bugs:
-        n = archive_closed_bugs()
-        print(f"✓ archived {n} closed bugs")
+        print(f"✓ archived {archive_closed_bugs()} closed bugs")
     if args.all or args.flag_stale:
-        n = flag_stale_decisions()
-        print(f"✓ flagged {n} stale decisions")
+        print(f"✓ flagged {flag_stale_decisions()} stale decisions")
     if args.report or args.all:
         report()
