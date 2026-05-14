@@ -1,13 +1,12 @@
-# Полный цикл работы (кратко)
-
-Каждый раз:
+# Полный цикл запуска WB_BOT
 
 ```bash
-# 1. Перейти в папку runtime
+# 1. Активировать venv
 cd C:\DATA\AI_OS\runtime
-
-# 2. Активировать виртуальное окружение
 venv\Scripts\activate
+
+# 2. Перейти в папку бота
+cd C:\DATA\AI_OS\projects\WB_bot
 
 # 3. Запустить сервер
 python -m uvicorn web.app:app --reload
