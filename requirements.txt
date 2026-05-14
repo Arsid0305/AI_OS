@@ -3,7 +3,7 @@
 
 # AI APIs
 openai>=1.30.0,<2.0.0
-anthropicic>=0.25.0
+anthropic>=0.25.0
 
 # Web framework (для WB_BOT web/)
 fastapi>=0.104.1
