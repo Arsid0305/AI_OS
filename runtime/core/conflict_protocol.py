@@ -1,7 +1,31 @@
 ALLOWED_MATRIX = {
-    "low": {"analyzer": True, "validator": True, "planner": True, "operator": True},
-    "medium": {"analyzer": True, "validator": True, "planner": True, "operator": False},
-    "high": {"analyzer": True, "validator": True, "planner": False, "operator": False},
+    "low": {
+        "analyzer":   True,
+        "validator":  True,
+        "planner":    True,
+        "operator":   True,
+        "researcher": True,
+        "writer":     True,
+        "critic":     True,
+    },
+    "medium": {
+        "analyzer":   True,
+        "validator":  True,
+        "planner":    True,
+        "operator":   False,
+        "researcher": True,
+        "writer":     True,
+        "critic":     True,
+    },
+    "high": {
+        "analyzer":   True,
+        "validator":  True,
+        "planner":    False,
+        "operator":   False,
+        "researcher": True,
+        "writer":     False,
+        "critic":     True,
+    },
 }
 
 

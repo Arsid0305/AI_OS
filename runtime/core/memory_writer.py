@@ -7,7 +7,7 @@ Use state.py for ephemeral runtime state.
 from datetime import date
 from pathlib import Path
 
-_MEMORY_ROOT = Path(__file__).resolve().parents[3] / "MEMORY"
+_MEMORY_ROOT = Path(__file__).resolve().parents[2] / "MEMORY"
 
 
 def _today() -> str:
@@ -48,15 +48,20 @@ def close_bug(title: str) -> bool:
     content = path.read_text(encoding="utf-8")
     if title not in content:
         return False
-    updated = content.replace(
-        f"**Статус:** open",
-        f"**Статус:** closed",
-        1,
-    )
-    if updated != content:
-        path.write_text(updated, encoding="utf-8")
-        return True
-    return False
+    # Find the specific bug section and close only it
+    pattern = f"## [" + r"\d{{4}}-\d{{2}}-\d{{2}}" + f"] {re.escape(title)}"
+    import re
+    match = re.search(pattern, content)
+    if not match:
+        return False
+    # Replace only the status in this specific bug's section
+    start = match.start()
+    section = content[start:]
+    updated_section = section.replace("**Статус:** open", "**Статус:** closed", 1)
+    if updated_section == section:
+        return False
+    path.write_text(content[:start] + updated_section, encoding="utf-8")
+    return True
 
 
 def append_lesson(title: str, what_happened: str, rule: str) -> None:
