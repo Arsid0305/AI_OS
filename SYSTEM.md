@@ -31,8 +31,12 @@ AI_OS/
 │   ├── core/              ← движки, оркестратор, конфиг
 │   └── prompts/           ← промпты по режимам
 ├── skills_sistem/agents/  ← когнитивные скилы (SKILL-*.md)
-├── ADAPTERS/              ← адаптеры для Cursor, GPT и др.
+├── ADAPTERS/              ← адаптеры для ChatGPT, Gemini, Claude.ai, Codex
 ├── docs/                  ← документация
+│   ├── ARCHITECTURE.md    ← архитектура системы
+│   ├── AI_TESTING.md      ← инструкция по тестированию AI
+│   ├── ai_benchmark.md    ← результаты тестов (прогоны)
+│   └── памятка.md         ← памятка по работе с AI_OS
 └── projects/              ← результаты работы AI
 ```
 
