@@ -1,0 +1,26 @@
+name: Auto-merge feature branches
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - dev
+
+jobs:
+  automerge-to-dev:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge into dev
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git checkout dev || git checkout -b dev
+          git merge --no-ff -X theirs ${{ github.ref_name }} -m "Auto-merge ${{ github.ref_name }} into dev"
+          git push origin dev
