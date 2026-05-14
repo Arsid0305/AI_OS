@@ -31,7 +31,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,8 +39,6 @@ app.add_middleware(
 
 templates = Jinja2Templates(directory=str(_APP_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(_APP_DIR / "static")), name="static")
-
-SIGNATURE = "\n\nС уважением,\nкоманда Arols"
 
 # connectors лежат в WB_BOT/connectors/
 sys.path.insert(0, str(_BOT_DIR))
@@ -176,6 +174,21 @@ def build_system_prompt(settings: dict, feedback_history: list) -> str:
     return p
 
 
+def _call_openai(system_prompt: str, user_prompt: str, model: str) -> str:
+    from openai import OpenAI
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    resp = client.chat.completions.create(
+        model=model,
+        max_tokens=500,
+        temperature=0.7,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": user_prompt},
+        ],
+    )
+    return resp.choices[0].message.content.strip()
+
+
 # ======================
 # МАРШРУТЫ
 # ======================
@@ -202,8 +215,6 @@ def approve(index: int = Form(...), edited_response: str = Form(...)):
         return RedirectResponse("/", status_code=303)
     item = queue.pop(index)
     final_response = edited_response.strip()
-    if SIGNATURE.strip() not in final_response:
-        final_response += SIGNATURE
     log_approved(item, final_response)
     save_queue(queue)
     return RedirectResponse("/", status_code=303)
@@ -292,18 +303,48 @@ async def api_generate(request: Request):
     )
 
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        resp = client.chat.completions.create(
-            model=settings.get("model", os.getenv("OPENAI_MODEL", "gpt-4o-mini")),
-            max_tokens=500,
-            temperature=0.7,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": user_prompt},
-            ],
-        )
-        text = resp.choices[0].message.content.strip()
+        model = settings.get("model", os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+        text = _call_openai(system_prompt, user_prompt, model)
+        return JSONResponse({"ok": True, "text": text})
+    except Exception as e:
+        msg = str(e)
+        if "401" in msg or "Incorrect API key" in msg:
+            return JSONResponse({"ok": False, "error": "Неверный OpenAI API-ключ"}, status_code=401)
+        if "insufficient_quota" in msg:
+            return JSONResponse({"ok": False, "error": "Недостаточно средств на счёте OpenAI"}, status_code=402)
+        return JSONResponse({"ok": False, "error": msg}, status_code=500)
+
+
+@app.post("/api/regenerate")
+async def api_regenerate(request: Request):
+    """Re-generate AI response for a specific queue item."""
+    body = await request.json()
+    idx      = body.get("index")
+    settings = body.get("settings", {})
+
+    if idx is None:
+        return JSONResponse({"ok": False, "error": "index обязателен"}, status_code=400)
+
+    queue = load_queue()
+    if idx < 0 or idx >= len(queue):
+        return JSONResponse({"ok": False, "error": "Элемент очереди не найден"}, status_code=404)
+
+    review = queue[idx].get("review", {})
+    review_text = build_review_text(review)
+    first_name  = extract_first_name(review.get("author", ""))
+    feedback_history = load_feedback_history()
+
+    system_prompt = build_system_prompt(settings, feedback_history)
+    user_prompt = (
+        f"Товар: «{review.get('productName', '—')}» (арт. {review.get('article', '—')})\n"
+        f"Оценка: {review.get('stars', 0)} из 5★\n"
+        f"Имя покупателя: {review.get('author', '—')} → обращайся: «{first_name}»\n"
+        f"{review_text}"
+    )
+
+    try:
+        model = settings.get("model", os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+        text = _call_openai(system_prompt, user_prompt, model)
         return JSONResponse({"ok": True, "text": text})
     except Exception as e:
         msg = str(e)
@@ -331,8 +372,6 @@ async def api_save_feedback(request: Request):
         history = history[-200:]
     save_feedback_history(history)
     return JSONResponse({"ok": True, "total": len(history)})
-
-
 
 
 # ======================
@@ -381,6 +420,7 @@ async def api_ozon_send_reply(request: Request):
         if "401" in msg:
             return JSONResponse({"ok": False, "error": "Ozon токен недействителен"}, status_code=401)
         return JSONResponse({"ok": False, "error": msg}, status_code=502)
+
 
 @app.get("/api/feedback/stats")
 def api_feedback_stats():
