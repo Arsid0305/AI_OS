@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """AI_OS v3 Professional"""
 from __future__ import annotations
-import argparse
 import sys
+from pathlib import Path
+
+# Allow `python runtime/main.py` from repo root
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import argparse
 import re
 from dotenv import load_dotenv
 load_dotenv()
@@ -64,7 +69,6 @@ def run(args: argparse.Namespace) -> None:
             if missing:
                 raise ValueError(f"Не указаны обязательные числа: {', '.join(missing)}")
 
-            # Explicit assertions for static type narrowing (Pyright/mypy)
             assert price is not None
             assert cogs is not None
             assert commission is not None
