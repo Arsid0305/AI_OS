@@ -153,12 +153,13 @@ class Orchestrator:
         eval_score, _ = evaluate(content, mode)
 
         # === CONTENT DRIFT ===
-        drift_details = {"score": 0.0}
+        drift_details = {"score": 1.0}
         if active_skill not in ("analyzer", "bootstrap"):
             drifted, drift_details = detect_drift(goal, content)
             if drifted:
                 print(f"⚠️ CONTENT DRIFT: score={drift_details.get('score')}")
-                if drift_details.get("score", 0) > 0.7:
+                # Log bug only for severe drift (score < 0.3 = very few keywords matched)
+                if drift_details.get("score", 1.0) < 0.3:
                     append_bug(
                         title=f"Content drift: {mode}/{active_skill}",
                         problem=f"Score {drift_details['score']:.2f} — goal: {goal[:80]}",
@@ -178,7 +179,7 @@ class Orchestrator:
             "drift_score": drift_details.get("score"),
             "latency":     result.get("latency"),
         }
-        print("\n🧠 ORCHESTRATOR LOG")
+        print("\n\U0001f9e0 ORCHESTRATOR LOG")
         print(json.dumps(log, indent=2, ensure_ascii=False))
 
         result["eval_score"] = eval_score
