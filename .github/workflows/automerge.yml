@@ -24,3 +24,9 @@ jobs:
           git checkout dev || git checkout -b dev
           git merge --no-ff ${{ github.ref_name }} -m "Auto-merge ${{ github.ref_name }} into dev"
           git push origin dev
+
+      - name: Promote dev to main
+        run: |
+          git checkout main
+          git merge --no-ff dev -m "Promote dev to main"
+          git push origin main
