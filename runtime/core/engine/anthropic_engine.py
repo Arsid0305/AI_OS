@@ -6,10 +6,15 @@
   ANTHROPIC_MODEL   — например claude-sonnet-4-6 (по умолчанию)
 """
 
+from __future__ import annotations
+
+import logging
 import os
 import time
 
 from core.engine.base_engine import BaseEngine
+
+logger = logging.getLogger(__name__)
 
 MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 _TIMEOUT = 60
@@ -33,7 +38,7 @@ class AnthropicEngine(BaseEngine):
         _model = model or MODEL
         start = time.time()
         try:
-            print(f">>> [Anthropic] CALL START model={_model}")
+            logger.debug("[Anthropic] CALL START model=%s", _model)
 
             system_content = ""
             chat_messages = []
@@ -61,7 +66,7 @@ class AnthropicEngine(BaseEngine):
             content = response.content[0].text if response.content else ""
             usage = response.usage
 
-            print(f">>> [Anthropic] DONE: {latency}s")
+            logger.debug("[Anthropic] DONE: %.2fs", latency)
             return {
                 "content": content,
                 "model": _model,
@@ -70,5 +75,5 @@ class AnthropicEngine(BaseEngine):
                 "tokens_completion": usage.output_tokens if usage else 0,
             }
         except Exception as e:
-            print(f"⛔ [Anthropic] ERROR: {e}")
+            logger.error("[Anthropic] ERROR: %s", e)
             return None
