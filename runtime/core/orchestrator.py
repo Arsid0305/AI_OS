@@ -102,10 +102,10 @@ class Orchestrator:
             logger.error("CONFLICT PROTOCOL blocked: %s", e)
             return {"content": "", "eval_score": 0.0}
 
-        prompt_data = self.registry.load_prompt(mode)
-        system_prompt = prompt_data["system"]
-
-        claude_tier = prompt_data.get("claude_tier", "sonnet")
+        # PromptConfig — typed, validated
+        prompt = self.registry.load_prompt(mode)
+        system_prompt = prompt.system
+        claude_tier = prompt.claude_tier
         resolved_claude_model = _CLAUDE_TIER_MAP.get(claude_tier, "claude-sonnet-4-6")
 
         skill_rules, active_skill = _load_skill(skill)
@@ -128,7 +128,7 @@ class Orchestrator:
 
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": prompt_data["user_template"].format(input=goal)},
+            {"role": "user",   "content": prompt.user_template.format(input=goal)},
         ]
 
         engine = get_engine(model)
