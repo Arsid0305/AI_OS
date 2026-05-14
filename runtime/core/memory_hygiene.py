@@ -9,7 +9,7 @@ import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-_MEMORY_ROOT = Path(__file__).resolve().parents[3] / "MEMORY"
+_MEMORY_ROOT = Path(__file__).resolve().parents[2] / "MEMORY"
 _ARCHIVE_ROOT = _MEMORY_ROOT / "archive"
 _STALE_DAYS = 90
 
