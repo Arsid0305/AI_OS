@@ -1,10 +1,10 @@
 """Router — выбирает движок по имени модели.
 
 Поддерживаемые значения --model:
-  openai     → OpenAIEngine (gpt-4o-mini по умолчанию)
-  anthropic  → AnthropicEngine (claude-sonnet-4 по умолчанию)
+  openai     → OpenAIEngine   (использует OPENAI_API_KEY)
+  anthropic  → AnthropicEngine (использует ANTHROPIC_API_KEY)
   claude     → AnthropicEngine (алиас)
-  gemini     → не реализован (NotImplementedError)
+  gemini     → GeminiEngine    (использует GOOGLE_API_KEY)
 """
 
 from core.engine.base_engine import BaseEngine
@@ -22,7 +22,8 @@ def get_engine(model: str) -> BaseEngine:
         return AnthropicEngine()
 
     elif model == "gemini":
-        raise NotImplementedError("Gemini engine not implemented yet")
+        from core.engine.gemini_engine import GeminiEngine
+        return GeminiEngine()
 
     else:
         raise ValueError(f"Unknown model: '{model}'. Valid: openai, anthropic, claude, gemini")
