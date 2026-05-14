@@ -12,6 +12,7 @@ import time
 from core.engine.base_engine import BaseEngine
 
 MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+_TIMEOUT = 60
 
 
 class AnthropicEngine(BaseEngine):
@@ -19,7 +20,10 @@ class AnthropicEngine(BaseEngine):
     def __init__(self):
         try:
             import anthropic
-            self._client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+            self._client = anthropic.Anthropic(
+                api_key=os.getenv("ANTHROPIC_API_KEY"),
+                timeout=_TIMEOUT,
+            )
         except ImportError:
             raise RuntimeError("anthropic SDK not installed. Run: pip install anthropic")
 
