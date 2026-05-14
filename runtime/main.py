@@ -129,9 +129,11 @@ These numbers are final and authoritative.
 
 def main():
     parser = argparse.ArgumentParser(description="AI_OS v3 Professional")
-    parser.add_argument("--mode",        required=True, choices=MODES)
+    parser.add_argument("--diagnose", action="store_true",
+                        help="Print system diagnostics and exit")
+    parser.add_argument("--mode",        choices=MODES, default=None)
     parser.add_argument("--model",       default="openai")
-    parser.add_argument("--goal",        required=True)
+    parser.add_argument("--goal",        default=None)
     parser.add_argument("--precision",   choices=["hypothesis", "approx", "strict"], default="hypothesis")
     parser.add_argument("--agent_type",  default=None)
     parser.add_argument("--risk_level",  default=None)
@@ -139,6 +141,15 @@ def main():
     parser.add_argument("--project")
     parser.add_argument("--output", "-o")
     args = parser.parse_args()
+
+    if args.diagnose:
+        from core.diagnostics import run_diagnostics
+        run_diagnostics()
+        sys.exit(0)
+
+    if not args.mode or not args.goal:
+        parser.error("--mode and --goal are required")
+
     run(args)
 
 
