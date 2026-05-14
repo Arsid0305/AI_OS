@@ -5,13 +5,18 @@
 ```
 AI_OS/
 │
-├── ── CORE ──────────────────────────────────────────────
+├── ── CORE ───────────────────────────────────────
 │   └── SYSTEM.md                  ← универсальные правила (любой AI)
 │
-├── ── ADAPTERS ──────────────────────────────────────────
-│   └── CLAUDE.md                  ← Claude Code adapter
+├── ── ADAPTERS ──────────────────────────────────────
+│   ├── CLAUDE.md                  ← Claude Code adapter (в корне репо)
+│   └── ADAPTERS/
+│       ├── chatgpt/BOOTSTRAP.md   ← ChatGPT
+│       ├── claude-web/BOOTSTRAP.md← Claude.ai
+│       ├── gemini/GEMINI.md       ← Gemini
+│       └── codex/BOOTSTRAP.md     ← Codex
 │
-├── ── MEMORY ────────────────────────────────────────────
+├── ── MEMORY ────────────────────────────────────────
 │   ├── tasks/
 │   │   ├── bugs.md                ← открытые баги (dedup по title)
 │   │   ├── todo.md                ← активные задачи
@@ -20,7 +25,7 @@ AI_OS/
 │   │   └── lessons.md             ← накопленные уроки
 │   └── archive/                   ← hygiene output
 │
-├── ── RUNTIME ───────────────────────────────────────────
+├── ── RUNTIME ───────────────────────────────────────
 │   ├── main.py                    ← CLI entry (--diagnose / --mode)
 │   ├── system_identity.json       ← integrity hash
 │   ├── requirements.txt
@@ -57,7 +62,7 @@ AI_OS/
 │       ├── test_orchestrator.py
 │       └── test_startup.py
 │
-├── ── SKILLS ────────────────────────────────────────────
+├── ── SKILLS ────────────────────────────────────────
 │   └── skills_sistem/agents/
 │       ├── SKILL-00_BOOTSTRAP.md
 │       ├── SKILL-01_ANALYZER.md
@@ -68,16 +73,19 @@ AI_OS/
 │       ├── SKILL-06_RESEARCHER.md
 │       └── SKILL-07_CRITIC.md
 │
-├── ── APPLICATIONS ──────────────────────────────────────
+├── ── APPLICATIONS ──────────────────────────────────
 │   └── projects/
-│       └── WB_BOT/                ← следующая сессия
+│       └── WB_BOT/                ← бот для ответов на Wildberries / Ozon
 │
-├── ── DOCS ──────────────────────────────────────────────
+├── ── DOCS ──────────────────────────────────────────
 │   └── docs/
-│       ├── ARCHITECTURE.md        ← этот файл
+│       ├── ARCHITECTURE.md        ← архитектура системы (этот файл)
+│       ├── AI_TESTING.md          ← инструкция по тестированию AI
+│       ├── ai_benchmark.md        ← результаты тестов (прогоны)
+│       ├── памятка.md             ← памятка по работе с AI_OS
 │       └── SESSION_EPICRISIS.md   ← контекст сессии аудита
 │
-└── ── CI/CD ─────────────────────────────────────────────
+└── ── CI/CD ─────────────────────────────────────────
     └── .github/workflows/
         ├── automerge.yml          ← claude/... → dev
         └── promote.yml            ← dev → main
