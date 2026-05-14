@@ -1,6 +1,6 @@
 {
   "name": "AI_OS_v3_Professional",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "principles": [
     "Separation of domain and skill",
     "Explicit risk boundaries",
@@ -13,7 +13,14 @@
     "meta_prompt",
     "marketplace",
     "research",
-    "visual"
+    "visual",
+    "code",
+    "review",
+    "decision",
+    "legal",
+    "medical",
+    "tables",
+    "writing"
   ],
-  "identity_hash": "dec3091df7e1d76fa842cfff377e873e4cad01c993b58cac28df4b98325adbda"
+  "identity_hash": "e2c365fbf408e4a35d27b1d5b437250814d377cb929ec138564152312a529778"
 }
