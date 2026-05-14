@@ -15,7 +15,20 @@ from core.project_manager import save_run
 from core.orchestrator import Orchestrator
 
 
-MODES = ["meta_agent", "meta_prompt", "marketplace", "research", "visual"]
+MODES = [
+    "meta_agent",
+    "meta_prompt",
+    "marketplace",
+    "research",
+    "visual",
+    "code",
+    "review",
+    "decision",
+    "legal",
+    "medical",
+    "tables",
+    "writing",
+]
 
 
 def extract_number(pattern, text):
@@ -94,8 +107,8 @@ These numbers are final and authoritative.
         goal=user_input,
         model=args.model,
         temperature=args.temperature,
-        agent_type=args.agent_type,
-        risk_level=args.risk_level,
+        agent_type=args.agent_type,   # None → orchestrator uses registry skill
+        risk_level=args.risk_level,   # None → orchestrator uses registry risk
     )
 
     content = result.get("content", "")
@@ -135,11 +148,11 @@ These numbers are final and authoritative.
 def main():
     parser = argparse.ArgumentParser(description="AI_OS v3 Professional")
     parser.add_argument("--mode",        required=True, choices=MODES)
-    parser.add_argument("--model",       default="openai")  # openai | anthropic | claude
+    parser.add_argument("--model",       default="openai")  # openai | anthropic
     parser.add_argument("--goal",        required=True)
     parser.add_argument("--precision",   choices=["hypothesis", "approx", "strict"], default="hypothesis")
-    parser.add_argument("--agent_type",  default="analyzer")
-    parser.add_argument("--risk_level",  default="medium")
+    parser.add_argument("--agent_type",  default=None)   # None = use registry skill
+    parser.add_argument("--risk_level",  default=None)   # None = use registry risk
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--project")
     parser.add_argument("--output", "-o")
