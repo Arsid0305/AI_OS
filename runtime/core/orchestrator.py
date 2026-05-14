@@ -43,12 +43,16 @@ def _load_skill_file(filename: str) -> str | None:
 
 
 def _load_skill(skill: str) -> tuple[str, str]:
-    skill_file = SKILL_FILE_MAP.get(skill)
-    if skill_file:
-        content = _load_skill_file(skill_file)
-        if content:
-            return content, skill
-    print(f">>> SKILL '{skill}' not found → BOOTSTRAP fallback")
+    if skill not in SKILL_FILE_MAP:
+        print(f"⚠️ UNKNOWN SKILL: '{skill}' — not registered in SKILL_FILE_MAP, falling back to BOOTSTRAP")
+        content = _load_skill_file(BOOTSTRAP_FILE)
+        return content or "", "bootstrap"
+
+    content = _load_skill_file(SKILL_FILE_MAP[skill])
+    if content:
+        return content, skill
+
+    print(f"⚠️ SKILL FILE MISSING on disk for registered skill '{skill}' — falling back to BOOTSTRAP")
     content = _load_skill_file(BOOTSTRAP_FILE)
     return content or "", "bootstrap"
 
