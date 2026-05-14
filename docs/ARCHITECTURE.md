@@ -10,6 +10,7 @@ AI_OS/
 │
 ├── ── ADAPTERS ──────────────────────────────────────
 │   ├── CLAUDE.md                  ← Claude Code adapter (в корне репо)
+│   ├── .cursor/rules/ai-os.mdc    ← Cursor adapter
 │   └── ADAPTERS/
 │       ├── chatgpt/BOOTSTRAP.md   ← ChatGPT
 │       ├── claude-web/BOOTSTRAP.md← Claude.ai
