@@ -44,6 +44,56 @@ EVAL_RULES = {
             (["variant", "вариант", "a/b"], "Variants"),
         ],
     },
+    "code": {
+        "min_length": 50,
+        "sections": [
+            (["```", "def ", "class ", "function", "const ", "var "], "Code block"),
+            (["decision", "решение", "because", "потому что", "reason"], "Key decision"),
+        ],
+    },
+    "decision": {
+        "min_length": 200,
+        "sections": [
+            (["option", "вариант", "alternative", "альтернатив"], "Options"),
+            (["recommend", "рекоменд", "suggest", "предлаг"], "Recommendation"),
+            (["risk", "риск", "tradeoff", "компромисс"], "Risks"),
+        ],
+    },
+    "legal": {
+        "min_length": 300,
+        "sections": [
+            (["риск", "risk", "нарушен"], "Risks"),
+            (["рекоменд", "recommend", "формулировк"], "Recommendations"),
+            (["закон", "фз", "статья", "law", "article"], "Legal reference"),
+        ],
+    },
+    "medical": {
+        "min_length": 200,
+        "sections": [
+            (["норма", "отклонение", "normal", "reference"], "Norm/deviation"),
+            (["врач", "специалист", "doctor", "specialist"], "Doctor referral"),
+        ],
+    },
+    "review": {
+        "min_length": 150,
+        "sections": [
+            (["проблема", "issue", "problem", "ошибка"], "Issues"),
+            (["рекоменд", "fix", "исправ", "suggest"], "Fixes"),
+        ],
+    },
+    "tables": {
+        "min_length": 50,
+        "sections": [
+            (["формула", "formula", "=if", "=sum", "=vlookup"], "Formula"),
+            (["ячейка", "cell", "column", "столбец"], "Cell reference"),
+        ],
+    },
+    "writing": {
+        "min_length": 100,
+        "sections": [
+            ([".", "\n"], "Has content"),
+        ],
+    },
 }
 
 

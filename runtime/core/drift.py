@@ -3,14 +3,12 @@ import re
 
 def detect_drift(goal_text, result_text, threshold=0.2):
     """
-    Drift detection logic:
-
-    1. If strict authoritative numeric block is present → no drift.
-    2. Otherwise compare goal keywords with result text.
+    Drift detection: compare goal keywords with result.
+    Returns (drifted: bool, details: dict).
     """
 
-    # Strict mode override
-    if "STRICT NUMERIC CALCULATION" in result_text or "Python authoritative" in result_text:
+    # Strict mode override: response explicitly signals authoritative calculation
+    if "STRICT NUMERIC CALCULATION" in result_text:
         return False, {
             "score": 1.0,
             "reason": "strict_block_present",
