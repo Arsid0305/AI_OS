@@ -1,9 +1,12 @@
 """State — персистентное key-value хранилище между запусками."""
 import json
+import logging
 from core.config import Paths
 
 _STATE_FILE = Paths.STATE_FILE
 _SESSION_KEY = "last_session"
+
+logger = logging.getLogger(__name__)
 
 
 def save_state(key: str, value) -> None:
@@ -43,12 +46,12 @@ def _read() -> dict:
         return {}
     try:
         return json.loads(_STATE_FILE.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception as e:
+        logger.warning("state.json unreadable: %s", e)
         return {}
 
 
 def _write(data: dict) -> None:
-    _STATE_FILE.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    tmp = _STATE_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(_STATE_FILE)
