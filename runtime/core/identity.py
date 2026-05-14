@@ -9,17 +9,22 @@ _IDENTITY_FILE = Paths.IDENTITY_FILE
 
 def verify_identity(path=None):
     target = Path(path) if path else _IDENTITY_FILE
-    with open(target, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    expected = data["identity_hash"]
-    temp = data.copy()
-    temp.pop("identity_hash")
-    computed = hashlib.sha256(
-        json.dumps(temp, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
-    if computed != expected:
-        raise RuntimeError("System identity integrity failure")
-    return True
+    try:
+        with open(target, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        expected = data["identity_hash"]
+        temp = data.copy()
+        temp.pop("identity_hash")
+        computed = hashlib.sha256(
+            json.dumps(temp, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        if computed != expected:
+            raise RuntimeError("System identity integrity failure")
+        return True
+    except RuntimeError:
+        raise
+    except Exception as e:
+        raise RuntimeError(f"Identity check failed: {e}") from e
 
 
 def generate_identity(path=None):

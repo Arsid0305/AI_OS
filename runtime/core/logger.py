@@ -1,7 +1,7 @@
 """Logger — центральная настройка logging для AI_OS."""
 import json
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from core.config import Paths
 
 
@@ -29,5 +29,5 @@ _logger = logging.getLogger("ai_os")
 
 def log_event(data: dict) -> None:
     data = dict(data)
-    data["timestamp"] = datetime.utcnow().isoformat()
+    data["timestamp"] = datetime.now(timezone.utc).isoformat()
     _logger.info(json.dumps(data, ensure_ascii=False))

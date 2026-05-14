@@ -28,7 +28,13 @@ MODES = [
 
 def extract_number(pattern: str, text: str) -> float | None:
     match = re.search(pattern, text, re.IGNORECASE)
-    return float(match.group(1)) if match else None
+    if not match:
+        return None
+    raw = re.sub(r"[\s]", "", match.group(1)).replace(",", ".")
+    try:
+        return float(raw)
+    except ValueError:
+        return None
 
 
 def run(args: argparse.Namespace) -> None:
@@ -51,13 +57,13 @@ def run(args: argparse.Namespace) -> None:
     # 3. Marketplace strict finance block
     if args.mode == "marketplace" and args.precision == "strict":
         try:
-            price      = extract_number(r"Цена\s*(\d+)", args.goal)
-            cogs       = extract_number(r"себестоимость\s*(\d+)", args.goal)
-            commission = extract_number(r"комиссия\s*(\d+)", args.goal)
-            logistics  = extract_number(r"логистика\s*(\d+)", args.goal)
-            traffic    = extract_number(r"трафик\s*(\d+)", args.goal)
-            cvr_raw    = extract_number(r"CVR\s*(\d+\.?\d*)", args.goal)
-            ad         = extract_number(r"реклама\s*(\d+)", args.goal)
+            price      = extract_number(r"(?i)цена\s*[:\-]?\s*(\d[\d\s]*(?:[.,]\d+)?)", args.goal)
+            cogs       = extract_number(r"(?i)себестоимость\s*[:\-]?\s*(\d[\d\s]*(?:[.,]\d+)?)", args.goal)
+            commission = extract_number(r"(?i)комиссия\s*[:\-]?\s*(\d[\d\s]*(?:[.,]\d+)?)", args.goal)
+            logistics  = extract_number(r"(?i)логистика\s*[:\-]?\s*(\d[\d\s]*(?:[.,]\d+)?)", args.goal)
+            traffic    = extract_number(r"(?i)трафик\s*[:\-]?\s*(\d[\d\s]*(?:[.,]\d+)?)", args.goal)
+            cvr_raw    = extract_number(r"(?i)CVR\s*[:\-]?\s*(\d+(?:[.,]\d+)?)", args.goal)
+            ad         = extract_number(r"(?i)реклама\s*[:\-]?\s*(\d[\d\s]*(?:[.,]\d+)?)", args.goal)
 
             missing = [
                 name for name, val in [
@@ -68,13 +74,6 @@ def run(args: argparse.Namespace) -> None:
             ]
             if missing:
                 raise ValueError(f"Не указаны обязательные числа: {', '.join(missing)}")
-
-            assert price is not None
-            assert cogs is not None
-            assert commission is not None
-            assert logistics is not None
-            assert traffic is not None
-            assert cvr_raw is not None
 
             if ad is None:
                 print("⚠️  Реклама не указана — используется 0")
@@ -142,9 +141,10 @@ These numbers are final and authoritative.
         print(f"\n📁 Saved to project: {saved}")
 
     if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
+        out_path = Path(args.output).resolve()
+        with open(out_path, "w", encoding="utf-8") as f:
             f.write(content)
-        print(f"\n💾 Saved: {args.output}")
+        print(f"\n💾 Saved: {out_path}")
 
 
 def main() -> None:
