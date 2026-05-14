@@ -22,7 +22,7 @@ from core.orchestrator import Orchestrator
 MODES = [
     "meta_agent", "meta_prompt", "marketplace", "research",
     "visual", "code", "review", "decision",
-    "legal", "medical", "tables", "writing",
+    "legal", "medical", "tables", "writing", "summary",
 ]
 
 
