@@ -17,6 +17,9 @@ projects/WB_BOT/wb_feedback_history.json
 runtime/state.json
 runtime/logs/
 
+# MEMORY archive — локальный архив, не для git
+MEMORY/archive/
+
 # Кэш
-.DS_Store
+DS_Store
 Thumbs.db
