@@ -28,5 +28,8 @@ jobs:
       - name: Promote dev to main
         run: |
           git checkout main
-          git merge --no-ff -X theirs dev -m "Promote dev to main"
+          if ! git merge --no-ff -X theirs dev -m "Promote dev to main"; then
+            git diff --name-only --diff-filter=U | xargs -r git rm -f
+            git commit -m "Promote dev to main"
+          fi
           git push origin main
