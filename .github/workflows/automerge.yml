@@ -28,5 +28,5 @@ jobs:
       - name: Promote dev to main
         run: |
           git checkout main
-          git merge --no-ff dev -m "Promote dev to main"
+          git merge --no-ff -X theirs dev -m "Promote dev to main"
           git push origin main
