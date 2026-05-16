@@ -33,9 +33,9 @@ class Models:
     GEMINI_DEFAULT    = "gemini-2.0-flash"
     DEEPSEEK_DEFAULT  = "deepseek-chat"
     CLAUDE_TIER_MAP   = {
-        "haiku":  "claude-haiku-4-5-20251001",
+        "haiku":  "claude-haiku-3-5-20241022",
         "sonnet": "claude-sonnet-4-6",
-        "opus":   "claude-opus-4-7",
+        "opus":   "claude-opus-4-5",
     }
 
 

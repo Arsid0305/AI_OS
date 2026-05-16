@@ -25,7 +25,7 @@ def ensure_project(project_name: str) -> Path:
 
 def save_run(project_name: str, mode: str, content: str, metadata: dict) -> str:
     project_path = ensure_project(project_name)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     file_path = project_path / f"{timestamp}_{mode}.txt"
     full_output = (
         f"PROJECT: {project_name}\n"
