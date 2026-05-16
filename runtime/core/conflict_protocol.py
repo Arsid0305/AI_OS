@@ -30,9 +30,11 @@ ALLOWED_MATRIX = {
 
 
 def authorize(skill, risk):
-    allowed = ALLOWED_MATRIX.get(risk, {}).get(skill, False)
+    if risk not in ALLOWED_MATRIX:
+        raise RuntimeError(f"Unknown risk level: '{risk}'. Valid: {list(ALLOWED_MATRIX.keys())}")
+    allowed = ALLOWED_MATRIX[risk].get(skill, False)
     if not allowed:
-        allowed_skills = [s for s, v in ALLOWED_MATRIX.get(risk, {}).items() if v]
+        allowed_skills = [s for s, v in ALLOWED_MATRIX[risk].items() if v]
         raise RuntimeError(
             f"Conflict protocol: {skill} + {risk} risk запрещено. "
             f"Допустимые типы при {risk} risk: {', '.join(allowed_skills)}"
