@@ -116,24 +116,11 @@ python main.py --mode research --goal "Как работает рынок Wildbe
 --project   сохранить в папку проекта
 ```
 
-### Примеры
-
-```bash
-# Исследование через Anthropic
-python main.py --mode research --model anthropic --goal "Тренды e-commerce 2025"
-
-# Код и сохранение в файл
-python main.py --mode code --goal "Напиши CRUD для FastAPI" -o result.md
-
-# Анализ договора
-python main.py --mode legal --goal "Текст договора..."
-```
-
 ---
 
 ## Скиллы
 
-Система автоматически выбирает скилл под задачу. Вы можете указать скилл явно в начале запроса или в проектных инструкциях.
+Система автоматически выбирает скилл под задачу.
 
 | Скилл | Назначение |
 |---|---|
@@ -145,48 +132,6 @@ python main.py --mode legal --goal "Текст договора..."
 | WRITER | Тексты и документы |
 | RESEARCHER | Сбор и синтез информации |
 | CRITIC | Оппонент идей |
-
-Подробно: `skills_sistem/SKILLS_ALL.md`
-
----
-
-## Структура проекта
-
-```
-ai_os/
-├── SYSTEM.md                  ← универсальное ядро
-├── CLAUDE.md                  ← адаптер Claude Code
-├── requirements.txt
-├── .cursor/
-│   └── rules/ai-os.mdc        ← адаптер Cursor
-├── ADAPTERS/
-│   ├── chatgpt/BOOTSTRAP.md
-│   ├── claude-web/BOOTSTRAP.md
-│   ├── codex/BOOTSTRAP.md
-│   └── gemini/GEMINI.md
-├── MEMORY/
-│   ├── tasks/
-│   │   ├── bugs.md
-│   │   ├── todo.md
-│   │   └── decisions.md
-│   └── lessons/lessons.md
-├── skills_sistem/
-│   ├── agents/SKILL-0X_*.md
-│   └── SKILLS_ALL.md
-├── runtime/
-│   ├── main.py                    ← CLI запуск
-│   ├── core/                      ← оркестратор, память, протоколы
-│   ├── engine/                    ← движки OpenAI и Anthropic
-│   └── prompts/                   ← 12 режимов (v1.json + domain.md)
-├── docs/
-│   ├── ARCHITECTURE.md            ← архитектура системы
-│   ├── AI_TESTING.md              ← инструкция по тестированию AI
-│   ├── ai_benchmark.md            ← результаты тестов (прогоны)
-│   ├── памятка.md                 ← памятка по работе с AI_OS
-│   └── SESSION_EPICRISIS.md       ← контекст сессии аудита
-└── projects/
-    └── WB_BOT/                    ← бот для ответов на Wildberries / Ozon
-```
 
 ---
 
