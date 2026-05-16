@@ -3,7 +3,7 @@
 
 # AI APIs
 openai>=1.30.0,<2.0.0
-anthropic>=0.25.0
+anthropic>=0.25.0,<1.0.0
 
 # Web framework (для WB_BOT web/)
 fastapi>=0.104.1
@@ -21,8 +21,6 @@ pydantic>=2.5.0
 
 # Utilities
 python-dotenv>=1.0.0
-tqdm>=4.66.0
-tenacity>=8.2.0
 
 # Dev / testing
 pytest>=8.0.0
