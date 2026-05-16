@@ -17,9 +17,13 @@ def _setup_logging() -> None:
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging.Formatter(fmt, datefmt))
     root = logging.getLogger()
-    if not root.handlers:
-        root.setLevel(logging.DEBUG)
+    root.setLevel(logging.DEBUG)
+    if not any(
+        isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
+        for h in root.handlers
+    ):
         root.addHandler(console)
+    if not any(isinstance(h, logging.FileHandler) for h in root.handlers):
         root.addHandler(file_handler)
 
 

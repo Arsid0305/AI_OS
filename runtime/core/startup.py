@@ -17,6 +17,7 @@ _REQUIRED_DIRS = [
     ("runtime/prompts",      Paths.PROMPTS_DIR),
     ("MEMORY/tasks",         Paths.MEMORY_TASKS),
     ("MEMORY/lessons",       Paths.MEMORY_LESSONS),
+    ("runtime/logs",         Paths.LOGS_DIR),
 ]
 
 _SKILL_FILES = [
