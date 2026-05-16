@@ -1,6 +1,8 @@
 from __future__ import annotations
 import json
 import logging
+import re
+import time
 from core.config import Paths, Models
 from core.agent_registry import build_default_registry
 from core.conflict_protocol import authorize
@@ -22,6 +24,12 @@ SKILL_FILE_MAP = {
     "critic":     "SKILL-07_CRITIC.md",
 }
 BOOTSTRAP_FILE = "SKILL-00_BOOTSTRAP.md"
+
+# Role-drift markers: exact word/phrase matches only (not substrings)
+_DRIFT_MARKER_PATTERNS = [
+    r"\bDecision:",
+    r"\bAction:",
+]
 
 
 def _load_skill_file(filename: str) -> str | None:
@@ -107,11 +115,20 @@ class Orchestrator:
         ]
 
         engine = get_engine(model)
+        # Build kwargs once — anthropic needs explicit model ID, others do not
+        call_kwargs: dict = {"temperature": temperature}
         if model == "anthropic":
             logger.debug("[Anthropic] tier=%s → %s", claude_tier, resolved_model)
-            result = engine.call(messages, temperature=temperature, model=resolved_model)
-        else:
-            result = engine.call(messages, temperature=temperature)
+            call_kwargs["model"] = resolved_model
+
+        result = None
+        for _attempt in range(3):
+            result = engine.call(messages, **call_kwargs)
+            if result is not None:
+                break
+            if _attempt < 2:
+                logger.warning("Engine returned None, retry %d/3", _attempt + 2)
+                time.sleep(2 ** _attempt)
 
         if not result or "content" not in result:
             logger.error("MODEL FAILED — returning empty safe output")
@@ -119,7 +136,7 @@ class Orchestrator:
 
         content = result.get("content", "")
 
-        if any(m in content for m in ["Decision:", "Action:", "I recommend", "We should"]):
+        if any(re.search(pattern, content) for pattern in _DRIFT_MARKER_PATTERNS):
             logger.warning("ROLE DRIFT: decision marker detected")
 
         eval_score, _ = evaluate(content, mode)

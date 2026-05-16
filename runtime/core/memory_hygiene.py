@@ -49,9 +49,10 @@ def archive_closed_bugs() -> int:
     closed_parts = [p for p in parts if "**Статус:** closed" in p]
     if not closed_parts:
         return 0
-    src.write_text("".join(open_parts), encoding="utf-8")
+    # Write to archive FIRST, then truncate source — prevents data loss on crash
     _append(_ARCHIVE_ROOT / "bugs_archive.md",
             f"\n## Archived: {_today_str()}\n" + "".join(closed_parts))
+    src.write_text("".join(open_parts), encoding="utf-8")
     return len(closed_parts)
 
 
@@ -89,6 +90,20 @@ def report() -> dict:
             return 0
         return sum(1 for l in path.read_text(encoding="utf-8").splitlines() if l.startswith(prefix))
 
+    def _count_open_bug_sections(path: Path) -> int:
+        """Count bug sections that are NOT closed (no CLOSED or [x] markers)."""
+        if not path.exists():
+            return 0
+        content = path.read_text(encoding="utf-8")
+        sections = re.split(r"(?=\n## \[)", content)
+        return sum(
+            1 for s in sections
+            if re.search(r"^## \[", s, re.MULTILINE)
+            and "CLOSED" not in s
+            and "[x]" not in s
+            and "**Статус:** closed" not in s
+        )
+
     def _count_marker(path: Path, marker: str) -> int:
         if not path.exists():
             return 0
@@ -96,7 +111,7 @@ def report() -> dict:
 
     decisions_path = _MEMORY_ROOT / "tasks" / "decisions.md"
     stats = {
-        "open_bugs":       _count_marker(_MEMORY_ROOT / "tasks" / "bugs.md", "## ["),
+        "open_bugs":       _count_open_bug_sections(_MEMORY_ROOT / "tasks" / "bugs.md"),
         "open_todos":      _count_prefix(_MEMORY_ROOT / "tasks" / "todo.md", "- [ ]"),
         "done_todos":      _count_prefix(_MEMORY_ROOT / "tasks" / "todo.md", "- [x]"),
         "lessons_count":   _count_marker(_MEMORY_ROOT / "lessons" / "lessons.md", "## ["),
