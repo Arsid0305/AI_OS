@@ -7,13 +7,14 @@ def detect_drift(goal_text, result_text, threshold=0.2):
     Returns (drifted: bool, details: dict).
     """
     tokens = re.findall(r"\w+", goal_text.lower())
+    result_words = set(re.findall(r"\w+", result_text.lower()))
     matched = []
     missed = []
 
     for t in set(tokens):
         if len(t) < 3:
             continue
-        if t in result_text.lower():
+        if t in result_words:
             matched.append(t)
         else:
             missed.append(t)
